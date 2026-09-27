@@ -1296,7 +1296,7 @@ function renderAtmosferaStructure(d){
     '<div class="dev-data-item"><div class="dev-data-item-label">Форматы</div><div class="dev-data-item-value">'+ATMOSFERA_STRUCTURE.typicalFloor.roomTypes+'</div></div>'+
     '<div class="dev-data-item"><div class="dev-data-item-label">Обычные площади</div><div class="dev-data-item-value">'+ATMOSFERA_STRUCTURE.typicalFloor.ordinaryAreaRange+'</div></div>'+
     '<div class="dev-data-item"><div class="dev-data-item-label">Пентхаусы</div><div class="dev-data-item-value">'+ATMOSFERA_STRUCTURE.totals.penthouses+'</div></div>';
-  note.innerHTML='<strong style="color:#F0F2F3;">Источник:</strong> «Шахматка 1.pdf» и «Планировки атмосфера.pdf», загруженные в проект. Цвет ячеек шахматки не трактуем как статус наличия.';
+  note.innerHTML='<strong style="color:#F0F2F3;">Источник:</strong> «Шахматка 1.pdf» и «Планировки атмосфера.pdf», загруженные в проект. Цвет ячеек шахматки не трактуем как статус наличия. <span style="display:block;margin-top:5px;">3D квартир на текущем этапе — реконструкция по соответствующей планировке; размеры и перегородки будут уточняться по исходному PDF.</span>';
   renderAtmosferaApartments(1,19);
 }
 
@@ -1448,40 +1448,7 @@ function dev3dPlayground(x,z){
   return g;
 }
 
-function renderAtmosferaStructure(d){
-  const section=document.getElementById("dev-structure");
-  const grid=document.getElementById("dev-building-grid");
-  const summary=document.getElementById("dev-structure-summary");
-  const dataGrid=document.getElementById("dev-data-grid");
-  const note=document.getElementById("dev-data-note");
-  if(!section || !grid || !summary || !dataGrid || !note) return;
-  if(d.id!=="zhk-atmosfera"){
-    section.style.display="none";
-    return;
-  }
 
-  section.style.display="block";
-  summary.textContent="5 корпусов • переменная этажность 15–19 этажей • 6 планировочных типов на типовом этаже.";
-  grid.innerHTML=ATMOSFERA_STRUCTURE.buildings.map(function(b){
-    return "<button class=\"dev-building-chip\" type=\"button\" data-building-id=\"" + b.id + "\"><strong>Корпус " + b.id + "</strong><span>" + (b.floors ? b.floors+" этажей" : "этажность уточняется") + "</span></button>";
-  }).join("");
-  grid.querySelectorAll("[data-building-id]").forEach(function(btn){
-    btn.addEventListener("click",function(){
-      const id=Number(btn.dataset.buildingId);
-      grid.querySelectorAll(".dev-building-chip").forEach(function(x){x.classList.remove("active");});
-      btn.classList.add("active");
-      dev3dShowBuildingInfo(id);
-      const viewer=document.getElementById("dev-3d-holder");
-      if(viewer) viewer.scrollIntoView({behavior:"smooth",block:"center"});
-    });
-  });
-  dataGrid.innerHTML=
-    "<div class=\"dev-data-item\"><div class=\"dev-data-item-label\">Планировок</div><div class=\"dev-data-item-value\">"+ATMOSFERA_STRUCTURE.typicalFloor.layoutCount+"</div></div>"+
-    "<div class=\"dev-data-item\"><div class=\"dev-data-item-label\">Типы</div><div class=\"dev-data-item-value\">"+ATMOSFERA_STRUCTURE.typicalFloor.roomTypes+"</div></div>"+
-    "<div class=\"dev-data-item\"><div class=\"dev-data-item-label\">Диапазон площади</div><div class=\"dev-data-item-value\">"+ATMOSFERA_STRUCTURE.typicalFloor.areaRange+"</div></div>"+
-    "<div class=\"dev-data-item\"><div class=\"dev-data-item-label\">Квартирография</div><div class=\"dev-data-item-value\">"+(ATMOSFERA_STRUCTURE.apartments.length ? "загружена" : "ожидает шахматку")+"</div></div>";
-  note.innerHTML="<strong style=\"color:#F0F2F3;\">Следующий этап:</strong> привязать номера квартир к корпусам и этажам из подтверждённой шахматки. До этого номера намеренно не создаются. <a href=\"" + ATMOSFERA_STRUCTURE.typicalFloor.sourceUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--gold);\">Открыть источник</a>";
-}
 function dev3dShowBuildingInfo(id){
   const def=ATMOSFERA_BUILDINGS.find(b=>b.id===id);
   const info=document.getElementById("dev3d-info");
