@@ -366,6 +366,24 @@
   </div>
   <div class="dev-facts" id="dev-facts"></div>
   <div class="personal-block" id="dev-personal"></div>
+
+  <div id="dev-3d-section" style="display:none;">
+    <div class="section-label">3D‑территория ЖК</div>
+    <div class="viewer-wrap" style="margin-top:0;">
+      <div class="dev3d-toolbar">
+        <span>Обзор территории</span>
+        <button id="dev3d-reset" class="viewer-reset" style="display:block;position:static;">Сбросить вид</button>
+      </div>
+      <div class="viewer-canvas-holder" id="dev3d-holder" style="height:420px;border-radius:18px;overflow:hidden;">
+        <div class="viewer-loading" id="dev3d-loading">Загрузка 3D‑территории…</div>
+      </div>
+      <div class="viewer-info">
+        <div class="viewer-info-empty" id="dev3d-info">Нажимайте на корпуса, чтобы посмотреть их характеристики</div>
+      </div>
+      <div style="padding:2px 14px 12px;font-size:11.5px;color:var(--ink-dim);">Один палец — вращение · Два пальца — зум/сдвиг</div>
+    </div>
+  </div>
+
   <div class="section-label">Квартиры в продаже</div>
   <div class="dev-objects-list" id="dev-objects-list"></div>
 </section>
@@ -477,6 +495,28 @@ const DEVELOPMENTS = [
     maternityCapital: true,
     coverImage: "assets/images/developments/zhk-moskovskiy/cover.jpg",
     coverFallback: DEV_COVER_FALLBACK
+  },
+  {
+    id: "zhk-atmosfera",
+    title: "ЖК Атмосфера",
+    city: "Грозный",
+    developer: "уточняется",
+    location: "Грозный",
+    installmentMax: "уточняется",
+    completionYear: "Q4 2027",
+    maxRooms: "уточняется",
+    maternityCapital: null,
+    buildingsCount: 5,
+    buildingFloors: "15–19",
+    apartmentsCount: 180,
+    undergroundParking: "2 уровня · 46 машин + 4 мотоцикла",
+    guestParking: 39,
+    ceilingHeight: "3 м",
+    finish: "без отделки",
+    priceFromPerM2: 83000,
+    coverImage: "assets/images/developments/zhk-atmosfera/cover.jpg",
+    coverFallback: DEV_COVER_FALLBACK,
+    hasSite3D: true
   }
 ];
 
@@ -605,13 +645,19 @@ function renderDevelopment(id) {
   document.getElementById("dev-facts").innerHTML = `
     <div class="dev-fact"><div class="dev-fact-label">Застройщик</div><div class="dev-fact-value">${d.developer}</div></div>
     <div class="dev-fact"><div class="dev-fact-label">Расположение</div><div class="dev-fact-value">${d.location}</div></div>
-    <div class="dev-fact"><div class="dev-fact-label">Рассрочка</div><div class="dev-fact-value">${d.installmentMax}</div></div>
-    <div class="dev-fact"><div class="dev-fact-label">Год сдачи</div><div class="dev-fact-value">${d.completionYear}</div></div>
-    <div class="dev-fact"><div class="dev-fact-label">Комнатность</div><div class="dev-fact-value">до ${d.maxRooms}</div></div>
-    <div class="dev-fact"><div class="dev-fact-label">Мат. капитал</div><div class="dev-fact-value">${d.maternityCapital ? "Да" : "Нет"}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Сдача</div><div class="dev-fact-value">${d.completionYear}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Корпусов</div><div class="dev-fact-value">${d.buildingsCount ?? "—"}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Этажность</div><div class="dev-fact-value">${d.buildingFloors ?? "—"}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Квартир</div><div class="dev-fact-value">${d.apartmentsCount ?? "—"}</div></div>
+    ${d.ceilingHeight ? `<div class="dev-fact"><div class="dev-fact-label">Потолки</div><div class="dev-fact-value">${d.ceilingHeight}</div></div>` : ""}
+    ${d.finish ? `<div class="dev-fact"><div class="dev-fact-label">Отделка</div><div class="dev-fact-value">${d.finish}</div></div>` : ""}
   `;
 
   renderPersonalBlock("dev-personal", `Здравствуйте! Интересуют квартиры в «${d.title}». Можно узнать подробнее?`);
+
+  const dev3d = document.getElementById("dev-3d-section");
+  dev3d.style.display = d.hasSite3D ? "block" : "none";
+  if (d.hasSite3D) initDevelopment3D(d);
 
   const objs = getObjectsFor(id).filter(o => o.status !== "sold");
   const objList = document.getElementById("dev-objects-list");
@@ -630,6 +676,136 @@ function renderDevelopment(id) {
     `).join("");
   }
 }
+
+/* =========================================================
+   3D ТЕРРИТОРИЯ ЖК — ЖК АТМОСФЕРА
+   Схематичная архитектурная сцена по подтвержденным данным.
+   Размеры корпусов и расстояния — визуальная модель, а не
+   строительные размеры. Не выдавать их за точные параметры.
+   ========================================================= */
+let dev3dRenderer = null, dev3dScene = null, dev3dCamera = null, dev3dControls = null, dev3dFrame = null;
+
+function dev3dMat(color, roughness=0.75) {
+  return new THREE.MeshStandardMaterial({ color, roughness });
+}
+function dev3dBox(w,h,d,mat,x,y,z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+function dev3dBuilding(index, floors, x, z) {
+  const g = new THREE.Group();
+  g.userData.building = index;
+  const h = floors * 0.22;
+  const body = dev3dBox(3.2,h,6.4,dev3dMat(0xA9B0B5,0.72),0,h/2,0);
+  g.add(body);
+  const glass = dev3dMat(0x7897A5,0.3);
+  for(let floor=0; floor<floors; floor++){
+    for(let col=0; col<4; col++){
+      const w=0.42, win=dev3dBox(w,0.13,0.035,glass,-1.05+col*0.7,0.28+floor*0.22,-3.23);
+      g.add(win);
+      const win2=dev3dBox(w,0.13,0.035,glass,-1.05+col*0.7,0.28+floor*0.22,3.23);
+      g.add(win2);
+    }
+  }
+  const roof=dev3dBox(3.35,0.12,6.55,dev3dMat(0x6C7277),0,h+0.06,0);
+  g.add(roof);
+  g.position.set(x,0,z);
+  return g;
+}
+function initDevelopment3D(d) {
+  const holder=document.getElementById("dev3d-holder");
+  if(!holder) return;
+  if(dev3dFrame) cancelAnimationFrame(dev3dFrame);
+  holder.querySelectorAll("canvas").forEach(x=>x.remove());
+
+  const w=holder.clientWidth||900, h=holder.clientHeight||420;
+  dev3dScene=new THREE.Scene();
+  dev3dScene.background=new THREE.Color(0x101417);
+  dev3dCamera=new THREE.PerspectiveCamera(42,w/h,0.1,200);
+  dev3dRenderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+  dev3dRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  dev3dRenderer.setSize(w,h);
+  dev3dRenderer.shadowMap.enabled=true;
+  dev3dRenderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  holder.insertBefore(dev3dRenderer.domElement,holder.firstChild);
+
+  dev3dScene.add(new THREE.HemisphereLight(0xe9eef2,0x3b4247,1.15));
+  const sun=new THREE.DirectionalLight(0xfff0d6,1.7);
+  sun.position.set(12,18,8); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
+  dev3dScene.add(sun);
+
+  const ground=dev3dBox(30,0.12,24,dev3dMat(0x6F786F,0.98),0,-0.06,0);
+  dev3dScene.add(ground);
+
+  const roadMat=dev3dMat(0x34393D,0.9);
+  dev3dScene.add(dev3dBox(27,0.03,2.8,roadMat,0,0,0));
+  dev3dScene.add(dev3dBox(2.8,0.035,22,roadMat,0,0,0));
+
+  const buildingPositions=[[-7,-6,15], [0,-6,17], [7,-6,16], [-5,5,18], [5,5,19]];
+  buildingPositions.forEach((p,i)=>dev3dScene.add(dev3dBuilding(i+1,p[2],p[0],p[1])));
+
+  const courtyard=dev3dBox(8.5,0.05,7.5,dev3dMat(0x8A927D,0.95),0,0.02,2.8);
+  courtyard.userData.building=0; dev3dScene.add(courtyard);
+
+  const treeMat=dev3dMat(0x4D6A4B,0.95), trunkMat=dev3dMat(0x67533E,0.95);
+  for(let i=0;i<26;i++){
+    const x=((i*7)%24)-12, z=((i*11)%18)-9;
+    if(Math.abs(x)<4 && Math.abs(z)<3) continue;
+    const t=new THREE.Group();
+    t.add(dev3dBox(0.14,0.7,0.14,trunkMat,0,0.35,0));
+    const crown=new THREE.Mesh(new THREE.SphereGeometry(0.48,10,8),treeMat);
+    crown.position.y=0.95; crown.castShadow=true; t.add(crown);
+    t.position.set(x,0,z); dev3dScene.add(t);
+  }
+
+  const info=document.getElementById("dev3d-info");
+  const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
+  dev3dRenderer.domElement.addEventListener("pointerup",e=>{
+    const r=dev3dRenderer.domElement.getBoundingClientRect();
+    mouse.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+    ray.setFromCamera(mouse,dev3dCamera);
+    const hits=ray.intersectObjects(dev3dScene.children,true);
+    for(const hit of hits){
+      let o=hit.object;
+      while(o && o!==dev3dScene && !o.userData.building) o=o.parent;
+      if(o && o.userData.building){
+        if(o.userData.building===0){info.textContent="Двор · зона благоустройства. Состав элементов уточняется по официальной документации."; return;}
+        const floors=[15,17,16,18,19][o.userData.building-1];
+        info.textContent=`Корпус ${o.userData.building} · ${floors} этажей · точная конфигурация и нумерация квартир будет подключена по шахматке.`;
+        return;
+      }
+    }
+  });
+
+  function frame(){
+    const box=new THREE.Box3().setFromObject(dev3dScene);
+    const center=box.getCenter(new THREE.Vector3());
+    const size=box.getSize(new THREE.Vector3());
+    const dist=Math.max(size.x,size.z)*0.78;
+    dev3dCamera.position.set(center.x+dist,dist*0.72,center.z+dist);
+    dev3dCamera.lookAt(center.x,0,center.z);
+    dev3dControls=new THREE.OrbitControls(dev3dCamera,dev3dRenderer.domElement);
+    dev3dControls.enableDamping=true; dev3dControls.dampingFactor=0.07;
+    dev3dControls.maxPolarAngle=Math.PI*0.47;
+    dev3dControls.minDistance=8; dev3dControls.maxDistance=45;
+    dev3dControls.target.set(center.x,0,center.z);
+    dev3dControls.update();
+  }
+  frame();
+  document.getElementById("dev3d-reset").onclick=frame;
+
+  function animate(){
+    dev3dFrame=requestAnimationFrame(animate);
+    dev3dControls.update();
+    dev3dRenderer.render(dev3dScene,dev3dCamera);
+  }
+  animate();
+
+  document.getElementById("dev3d-loading").style.display="none";
+}
+
 /* =========================================================
    СТРАНИЦА ОБЪЕКТА
    ========================================================= */
