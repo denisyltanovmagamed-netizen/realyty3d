@@ -524,15 +524,13 @@ const DEVELOPMENTS = [
     floorPlanImage: "https://sellox.ru/wp-content/uploads/2024/07/%D0%9F%D0%BB%D0%B0%D0%BD-%D1%82%D0%B8%D0%BF%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE-%D1%8D%D1%82%D0%B0%D0%B6%D0%B0-%D0%96%D0%9A-%D0%90%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0.webp",
     floorPlanPdf: "https://sellox.ru/wp-content/uploads/2024/07/%D0%9F%D0%BE%D1%8D%D1%82%D0%B0%D0%B6%D0%BD%D1%8B%D0%B9-%D0%BF%D0%BB%D0%B0%D0%BD-%D1%87-%D0%B1.pdf",
     layoutTypesPerFloor: 6,
-    coverImage: "https://grozny.estate/wp-content/uploads/2024/03/%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-1.webp",
+    coverImage: "https://sellox.ru/wp-content/uploads/2024/07/%D0%96%D0%9A-%D0%90%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0.webp",
     galleryImages: [
-      "https://grozny.estate/wp-content/uploads/2024/03/%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-1.webp",
-      "https://grozny.estate/wp-content/uploads/2024/03/%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-2.webp",
-      "https://grozny.estate/wp-content/uploads/2024/03/%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-3.webp",
-      "https://grozny.estate/wp-content/uploads/2024/03/%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-4.webp",
-      "https://grozny.estate/wp-content/uploads/2024/03/%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-5.webp"
+      "https://sellox.ru/wp-content/uploads/2024/07/%D0%96%D0%9A-%D0%90%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-1-1170x785.webp",
+      "https://sellox.ru/wp-content/uploads/2024/07/%D0%96%D0%9A-%D0%90%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-2-1170x785.webp",
+      "https://sellox.ru/wp-content/uploads/2024/07/%D0%96%D0%9A-%D0%90%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-1170x785.webp"
     ],
-    sourceUrl: "https://grozny.estate/tdcpt_properties/zhk-atmosfera-groznyy/",
+    sourceUrl: "https://sellox.ru/property/zhk-atmosfera-v-groznom/",
     hasSite3D: true
   }
 ];
@@ -748,11 +746,11 @@ function renderDevelopment(id) {
 let dev3dRenderer = null, dev3dScene = null, dev3dCamera = null, dev3dControls = null, dev3dFrame = null;
 
 const ATMOSFERA_BUILDINGS = [
-  {id:1, floors:19, x:-7.0, z:-5.5, w:4.7, d:8.4, tone:0xB9BDC0},
-  {id:2, floors:18, x:0.0, z:-5.2, w:4.7, d:8.1, tone:0xC4C7C8},
-  {id:3, floors:17, x:7.0, z:-5.5, w:4.7, d:8.0, tone:0xB4B9BC},
-  {id:4, floors:16, x:-4.5, z:5.6, w:4.8, d:7.7, tone:0xC6C8C8},
-  {id:5, floors:15, x:4.5, z:5.6, w:4.8, d:7.7, tone:0xB8BCBD}
+  {id:1, visualFloors:19, x:-7.0, z:-5.5, w:4.7, d:8.4, tone:0xB9BDC0},
+  {id:2, visualFloors:18, x:0.0, z:-5.2, w:4.7, d:8.1, tone:0xC4C7C8},
+  {id:3, visualFloors:17, x:7.0, z:-5.5, w:4.7, d:8.0, tone:0xB4B9BC},
+  {id:4, visualFloors:16, x:-4.5, z:5.6, w:4.8, d:7.7, tone:0xC6C8C8},
+  {id:5, visualFloors:15, x:4.5, z:5.6, w:4.8, d:7.7, tone:0xB8BCBD}
 ];
 
 function dev3dMat(color, roughness=0.72, metalness=0) {
@@ -788,10 +786,10 @@ function dev3dWindowMaterial(){
 function dev3dBuilding(def){
   const g=new THREE.Group();
   g.userData.building=def.id;
-  g.userData.floors=def.floors;
+  g.userData.floors=def.visualFloors;
 
   const floorH=0.23;
-  const h=def.floors*floorH;
+  const h=def.visualFloors*floorH;
   const body=dev3dBox(def.w,h,def.d,dev3dMat(def.tone,0.7),0,h/2,0);
   g.add(body);
 
@@ -907,26 +905,14 @@ function dev3dShowBuildingInfo(id){
   const def=ATMOSFERA_BUILDINGS.find(b=>b.id===id);
   const info=document.getElementById("dev3d-info");
   if(!info || !def) return;
-  const floorButtons=[];
-  for(let floor=1;floor<=def.floors;floor++){
-    floorButtons.push(`<button type="button" data-floor="${floor}" style="border:1px solid rgba(255,255,255,.10);background:#20272A;color:#E8ECEE;border-radius:10px;padding:7px 9px;font-size:11px;cursor:pointer;">${floor}</button>`);
-  }
   info.innerHTML=`
-    <div style="font-weight:700;color:#F0F2F3;margin-bottom:5px;">Корпус ${def.id} · ${def.floors} этажей</div>
-    <div style="font-size:11.5px;color:var(--ink-dim);margin-bottom:9px;">Выберите этаж. Номера и наличие квартир подключим из шахматки.</div>
-    <div style="display:flex;flex-wrap:wrap;gap:5px;max-height:118px;overflow:auto;">${floorButtons.join("")}</div>
+    <div style="font-weight:700;color:#F0F2F3;margin-bottom:5px;">Корпус ${def.id}</div>
+    <div style="font-size:11.5px;color:var(--ink-dim);margin-bottom:8px;">ЖК: 15–19 этажей. Точная этажность именно этого корпуса ещё не подтверждена открытым документом.</div>
+    <div style="padding:10px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);">
+      <div style="font-size:11px;color:#F0F2F3;font-weight:700;margin-bottom:4px;">Следующий уровень</div>
+      <div style="font-size:11px;color:var(--ink-dim);">Корпус → этаж → квартира подключим после привязки шахматки.</div>
+    </div>
   `;
-  info.querySelectorAll("[data-floor]").forEach(btn=>{
-    btn.addEventListener("click",()=>{
-      const floor=Number(btn.dataset.floor);
-      info.innerHTML=`
-        <div style="font-weight:700;color:#F0F2F3;margin-bottom:5px;">Корпус ${def.id} · этаж ${floor}</div>
-        <div style="font-size:11.5px;color:var(--ink-dim);">Квартиры этого этажа пока не подключены. Следующим этапом добавим шахматку → номера → планировки → цены.</div>
-        <button type="button" id="dev3d-back-floor" style="margin-top:9px;border:1px solid rgba(255,255,255,.10);background:#20272A;color:#E8ECEE;border-radius:10px;padding:7px 10px;font-size:11px;cursor:pointer;">← Корпус</button>
-      `;
-      document.getElementById("dev3d-back-floor").onclick=()=>dev3dShowBuildingInfo(def.id);
-    });
-  });
 }
 
 function initDevelopment3D(d) {
