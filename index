@@ -810,8 +810,8 @@ const ATMOSFERA_STRUCTURE = {
         {type:"2Е",area:"61,71 м²",view:"невидовая",planPage:13}
       ],
       penthouses: [
-        {number:69,code:"R1",type:"2Е",area:"104,5 м²",view:"невидовая",plan:"пентхаус I"},
-        {number:70,code:"R2",type:"2к",area:"127,95 м²",view:"видовая",plan:"пентхаус I"},
+        {number:69,code:"R1",type:"2Е",area:"104,5 м²",view:"невидовая",plan:"пентхаус I",isPenthouse:true},
+        {number:70,code:"R2",type:"2к",area:"127,95 м²",view:"видовая",plan:"пентхаус I",isPenthouse:true},
         {number:71,type:"2к",area:"80,14 м²",view:"видовая",planPage:15},
         {number:72,type:"2к",area:"57,23 м²",view:"невидовая",planPage:16}
       ]
@@ -825,8 +825,8 @@ const ATMOSFERA_STRUCTURE = {
         {type:"2Е",area:"61,71 м²",view:"невидовая",planPage:20}
       ],
       penthouses: [
-        {number:137,code:"R3",type:"3Е",area:"141,33 м²",view:"невидовая",plan:"пентхаус II"},
-        {number:138,code:"R4",type:"3к",area:"127,95 м²",view:"видовая",plan:"пентхаус II"},
+        {number:137,code:"R3",type:"3Е",area:"141,33 м²",view:"невидовая",plan:"пентхаус II",isPenthouse:true},
+        {number:138,code:"R4",type:"3к",area:"127,95 м²",view:"видовая",plan:"пентхаус II",isPenthouse:true},
         {number:139,type:"2Е",area:"61,71 м²",view:"видовая",planPage:19},
         {number:140,type:"2Е",area:"61,71 м²",view:"невидовая",planPage:20}
       ]
@@ -841,8 +841,8 @@ const ATMOSFERA_STRUCTURE = {
         {type:"3Е",area:"84,91 м²",view:"невидовая",planPage:25}
       ],
       penthouses: [
-        {number:216,code:"R5",type:"2Е",area:"104,7 м²",view:"невидовая",plan:"пентхаус III"},
-        {number:217,code:"R6",type:"2Е",area:"104,7 м²",view:"видовая",plan:"пентхаус III"},
+        {number:216,code:"R5",type:"2Е",area:"104,7 м²",view:"невидовая",plan:"пентхаус III",isPenthouse:true},
+        {number:217,code:"R6",type:"2Е",area:"104,7 м²",view:"видовая",plan:"пентхаус III",isPenthouse:true},
         {number:218,type:"1к",area:"49,82 м²",view:"видовая",planPage:23},
         {number:219,type:"1к",area:"45,37 м²",view:"видовая",planPage:24},
         {number:220,type:"3Е",area:"84,91 м²",view:"невидовая",planPage:25}
@@ -857,8 +857,8 @@ const ATMOSFERA_STRUCTURE = {
         {type:"2Е",area:"61,71 м²",view:"невидовая",planPage:29}
       ],
       penthouses: [
-        {number:277,code:"R7",type:"2Е",area:"105,8 м²",view:"невидовая",plan:"пентхаус IV"},
-        {number:278,code:"R8",type:"2к",area:"126,6 м²",view:"видовая",plan:"пентхаус IV"},
+        {number:277,code:"R7",type:"2Е",area:"105,8 м²",view:"невидовая",plan:"пентхаус IV",isPenthouse:true},
+        {number:278,code:"R8",type:"2к",area:"126,6 м²",view:"видовая",plan:"пентхаус IV",isPenthouse:true},
         {number:279,type:"2к",area:"86,01 м²",view:"видовая",planPage:28},
         {number:280,type:"2Е",area:"61,71 м²",view:"невидовая",planPage:29}
       ]
@@ -899,7 +899,7 @@ function atmosferaApartmentNumberStart(buildingId,floor){
 function getAtmosferaFloorApartments(buildingId,floor){
   const b=getAtmosferaStructureBuilding(buildingId);
   if(!b || floor<2 || floor>b.floors) return [];
-  if(floor===b.floors && b.penthouses.length) return b.penthouses.map(x=>({...x,floor}));
+  if(floor===b.floors && b.penthouses.length) return b.penthouses.map(x=>({...x,floor,isPenthouse:!!x.isPenthouse}));
   const start=atmosferaApartmentNumberStart(buildingId,floor);
   return b.regularLayouts.map((layout,i)=>({...layout,number:start+i,floor,isPenthouse:false}));
 }
@@ -939,7 +939,8 @@ function renderAtmosferaStructure(d){
   section.style.display="block";
   summary.textContent="5 подъездов · 15–19 этажей · 328 обычных квартир по сводной шахматке + 8 пентхаусов R1–R8.";
   grid.innerHTML=ATMOSFERA_STRUCTURE.buildings.map(b=>{
-    const regular=(b.floors-1)*b.apartmentsPerRegularFloor-b.penthouses.length;
+    const penthouseCount=b.penthouses.filter(x=>x.isPenthouse).length;
+    const regular=(b.floors-2)*b.apartmentsPerRegularFloor+(b.apartmentsPerRegularFloor-penthouseCount);
     return '<button class="dev-building-chip '+(b.id===1?'active':'')+'" type="button" data-building-id="'+b.id+'"><strong>Подъезд '+b.id+'</strong><span>'+b.floors+' этажей · '+regular+' обычных квартир</span></button>';
   }).join("");
   grid.querySelectorAll("[data-building-id]").forEach(btn=>btn.addEventListener("click",()=>{
