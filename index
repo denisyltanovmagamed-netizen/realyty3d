@@ -715,41 +715,196 @@ function renderDevelopment(id) {
 
 /* =========================================================
    3D ТЕРРИТОРИЯ ЖК — ЖК АТМОСФЕРА
-   Схематичная архитектурная сцена по подтвержденным данным.
-   Размеры корпусов и расстояния — визуальная модель, а не
-   строительные размеры. Не выдавать их за точные параметры.
+   Визуальная реконструкция на основе опубликованных материалов:
+   5 корпусов, 15–19 этажей, 2 уровня подземного паркинга,
+   двор, коммерция, мечеть, детские/спортивные зоны.
+   Геометрические размеры участка пока не заявляются как
+   строительные — они масштабированы для интерактивной сцены.
    ========================================================= */
 let dev3dRenderer = null, dev3dScene = null, dev3dCamera = null, dev3dControls = null, dev3dFrame = null;
 
-function dev3dMat(color, roughness=0.75) {
-  return new THREE.MeshStandardMaterial({ color, roughness });
+const ATMOSFERA_BUILDINGS = [
+  {id:1, floors:19, x:-7.0, z:-5.5, w:4.7, d:8.4, tone:0xB9BDC0},
+  {id:2, floors:18, x:0.0, z:-5.2, w:4.7, d:8.1, tone:0xC4C7C8},
+  {id:3, floors:17, x:7.0, z:-5.5, w:4.7, d:8.0, tone:0xB4B9BC},
+  {id:4, floors:16, x:-4.5, z:5.6, w:4.8, d:7.7, tone:0xC6C8C8},
+  {id:5, floors:15, x:4.5, z:5.6, w:4.8, d:7.7, tone:0xB8BCBD}
+];
+
+function dev3dMat(color, roughness=0.72, metalness=0) {
+  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
 }
 function dev3dBox(w,h,d,mat,x,y,z) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
   m.position.set(x,y,z);
-  m.castShadow = true; m.receiveShadow = true;
+  m.castShadow = true;
+  m.receiveShadow = true;
   return m;
 }
-function dev3dBuilding(index, floors, x, z) {
-  const g = new THREE.Group();
-  g.userData.building = index;
-  const h = floors * 0.22;
-  const body = dev3dBox(3.2,h,6.4,dev3dMat(0xA9B0B5,0.72),0,h/2,0);
+function dev3dLabel(text, color="#F2F4F5") {
+  const canvas=document.createElement("canvas");
+  canvas.width=512; canvas.height=160;
+  const ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,512,160);
+  ctx.fillStyle="rgba(14,18,20,0.82)";
+  ctx.roundRect(20,25,472,105,28); ctx.fill();
+  ctx.fillStyle=color; ctx.font="700 48px Arial";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(text,256,82);
+  const tex=new THREE.CanvasTexture(canvas);
+  tex.minFilter=THREE.LinearFilter;
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false});
+  const sprite=new THREE.Sprite(mat);
+  sprite.scale.set(2.5,0.78,1);
+  return sprite;
+}
+function dev3dWindowMaterial(){
+  return dev3dMat(0x66889A,0.22,0.08);
+}
+function dev3dBuilding(def){
+  const g=new THREE.Group();
+  g.userData.building=def.id;
+  g.userData.floors=def.floors;
+
+  const floorH=0.23;
+  const h=def.floors*floorH;
+  const body=dev3dBox(def.w,h,def.d,dev3dMat(def.tone,0.7),0,h/2,0);
   g.add(body);
-  const glass = dev3dMat(0x7897A5,0.3);
-  for(let floor=0; floor<floors; floor++){
-    for(let col=0; col<4; col++){
-      const w=0.42, win=dev3dBox(w,0.13,0.035,glass,-1.05+col*0.7,0.28+floor*0.22,-3.23);
-      g.add(win);
-      const win2=dev3dBox(w,0.13,0.035,glass,-1.05+col*0.7,0.28+floor*0.22,3.23);
-      g.add(win2);
+
+  const dark=dev3dMat(0x667177,0.42,0.1);
+  const glass=dev3dWindowMaterial();
+  const trim=dev3dMat(0xE1E4E4,0.58);
+
+  // Центральные вертикальные стеклянные лоджии — характерный ритм фасада.
+  const sides=[
+    {z:-def.d/2-0.018, axis:"front"},
+    {z:def.d/2+0.018, axis:"back"}
+  ];
+  sides.forEach(side=>{
+    for(let col=0;col<4;col++){
+      const x=-def.w/2+0.65+col*(def.w-1.3)/3;
+      const pane=dev3dBox(0.56,h*0.72,0.045,glass,x,h*0.49,side.z);
+      g.add(pane);
+      g.add(dev3dBox(0.045,h*0.78,0.08,trim,x-0.31,h*0.49,side.z));
+      g.add(dev3dBox(0.045,h*0.78,0.08,trim,x+0.31,h*0.49,side.z));
+    }
+  });
+
+  // Узкие вертикальные пилоны и горизонтальные пояса.
+  [-def.w/2+0.18, def.w/2-0.18].forEach(x=>{
+    g.add(dev3dBox(0.16,h,0.12,dark,x,h/2,-def.d/2-0.05));
+    g.add(dev3dBox(0.16,h,0.12,dark,x,h/2,def.d/2+0.05));
+  });
+  for(let f=1;f<def.floors;f++){
+    const y=f*floorH;
+    if(f%2===0){
+      g.add(dev3dBox(def.w+0.06,0.035,0.08,trim,0,y,-def.d/2-0.05));
+      g.add(dev3dBox(def.w+0.06,0.035,0.08,trim,0,y,def.d/2+0.05));
     }
   }
-  const roof=dev3dBox(3.35,0.12,6.55,dev3dMat(0x6C7277),0,h+0.06,0);
+
+  // Выделенный нижний этаж коммерции.
+  const podiumH=0.62;
+  g.add(dev3dBox(def.w+0.12,podiumH,def.d+0.12,dark,0,podiumH/2,0));
+  for(let col=0;col<5;col++){
+    const x=-def.w/2+0.48+col*((def.w-0.96)/4);
+    g.add(dev3dBox(0.5,0.37,0.04,glass,x,0.35,-def.d/2-0.08));
+  }
+
+  const roof=dev3dBox(def.w+0.16,0.08,def.d+0.16,dev3dMat(0x50585C,0.78),0,h+0.04,0);
   g.add(roof);
+
+  const sign=dev3dLabel("КОРПУС "+def.id);
+  sign.position.set(0,h+0.62,0);
+  g.add(sign);
+
+  g.position.set(def.x,0,def.z);
+  return g;
+}
+function dev3dPath(w,d,x,z,rot=0){
+  const m=dev3dBox(w,0.025,d,dev3dMat(0xC7C8C3,0.96),x,0.012,z);
+  m.rotation.y=rot; return m;
+}
+function dev3dTree(x,z,s=1){
+  const g=new THREE.Group();
+  const trunk=dev3dBox(0.13*s,0.72*s,0.13*s,dev3dMat(0x685342,0.96),0,0.36*s,0);
+  g.add(trunk);
+  const crown=new THREE.Mesh(new THREE.SphereGeometry(0.55*s,12,10),dev3dMat(0x49664B,0.96));
+  crown.position.y=0.95*s; crown.castShadow=true; g.add(crown);
   g.position.set(x,0,z);
   return g;
 }
+function dev3dLamp(x,z){
+  const g=new THREE.Group();
+  g.add(dev3dBox(0.055,0.72,0.055,dev3dMat(0x353A3D,0.72),0,0.36,0));
+  const lightMat=dev3dMat(0xF2E5B8,0.2,0.1);
+  g.add(dev3dBox(0.2,0.08,0.2,lightMat,0,0.74,0));
+  g.position.set(x,0,z);
+  return g;
+}
+function dev3dMosque(x,z){
+  const g=new THREE.Group();
+  g.userData.feature="mosque";
+  const base=dev3dBox(2.0,0.78,2.3,dev3dMat(0xE0DDD2,0.62),0,0.39,0);
+  g.add(base);
+  const domeMat=dev3dMat(0xD4C5A2,0.46,0);
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(0.82,24,16,0,Math.PI*2,0,Math.PI/2),domeMat);
+  dome.scale.y=0.72; dome.position.y=1.0; dome.castShadow=true; g.add(dome);
+  for(const sx of [-1.35,1.35]){
+    const tower=dev3dBox(0.22,1.75,0.22,dev3dMat(0xE0DDD2,0.62),sx,0.875,0);
+    g.add(tower);
+    const cap=new THREE.Mesh(new THREE.ConeGeometry(0.18,0.36,12),domeMat);
+    cap.position.set(sx,1.93,0); g.add(cap);
+  }
+  g.position.set(x,0,z);
+  return g;
+}
+function dev3dParking(x,z){
+  const g=new THREE.Group();
+  g.userData.feature="parking";
+  const ramp=dev3dBox(2.1,0.06,3.3,dev3dMat(0x474D50,0.94),0,0.03,0);
+  ramp.rotation.y=Math.PI/2; g.add(ramp);
+  const edge=dev3dMat(0x8B9092,0.82);
+  for(let i=-1;i<=1;i++) g.add(dev3dBox(0.04,0.045,2.8,edge,i*0.7,0.06,0));
+  g.position.set(x,0,z);
+  return g;
+}
+function dev3dPlayground(x,z){
+  const g=new THREE.Group();
+  g.userData.feature="playground";
+  const pad=dev3dBox(3.1,0.045,2.6,dev3dMat(0xC89D7B,0.92),0,0.02,0);
+  g.add(pad);
+  g.add(dev3dBox(1.4,0.32,0.12,dev3dMat(0x6C7780,0.55),0,0.4,0));
+  g.position.set(x,0,z);
+  return g;
+}
+
+function dev3dShowBuildingInfo(id){
+  const def=ATMOSFERA_BUILDINGS.find(b=>b.id===id);
+  const info=document.getElementById("dev3d-info");
+  if(!info || !def) return;
+  const floorButtons=[];
+  for(let floor=1;floor<=def.floors;floor++){
+    floorButtons.push(`<button type="button" data-floor="${floor}" style="border:1px solid rgba(255,255,255,.10);background:#20272A;color:#E8ECEE;border-radius:10px;padding:7px 9px;font-size:11px;cursor:pointer;">${floor}</button>`);
+  }
+  info.innerHTML=`
+    <div style="font-weight:700;color:#F0F2F3;margin-bottom:5px;">Корпус ${def.id} · ${def.floors} этажей</div>
+    <div style="font-size:11.5px;color:var(--ink-dim);margin-bottom:9px;">Выберите этаж. Номера и наличие квартир подключим из шахматки.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;max-height:118px;overflow:auto;">${floorButtons.join("")}</div>
+  `;
+  info.querySelectorAll("[data-floor]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const floor=Number(btn.dataset.floor);
+      info.innerHTML=`
+        <div style="font-weight:700;color:#F0F2F3;margin-bottom:5px;">Корпус ${def.id} · этаж ${floor}</div>
+        <div style="font-size:11.5px;color:var(--ink-dim);">Квартиры этого этажа пока не подключены. Следующим этапом добавим шахматку → номера → планировки → цены.</div>
+        <button type="button" id="dev3d-back-floor" style="margin-top:9px;border:1px solid rgba(255,255,255,.10);background:#20272A;color:#E8ECEE;border-radius:10px;padding:7px 10px;font-size:11px;cursor:pointer;">← Корпус</button>
+      `;
+      document.getElementById("dev3d-back-floor").onclick=()=>dev3dShowBuildingInfo(def.id);
+    });
+  });
+}
+
 function initDevelopment3D(d) {
   const holder=document.getElementById("dev3d-holder");
   if(!holder) return;
@@ -758,8 +913,8 @@ function initDevelopment3D(d) {
 
   const w=holder.clientWidth||900, h=holder.clientHeight||420;
   dev3dScene=new THREE.Scene();
-  dev3dScene.background=new THREE.Color(0x101417);
-  dev3dCamera=new THREE.PerspectiveCamera(42,w/h,0.1,200);
+  dev3dScene.background=new THREE.Color(0xAFC2CC);
+  dev3dCamera=new THREE.PerspectiveCamera(43,w/h,0.1,220);
   dev3dRenderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
   dev3dRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
   dev3dRenderer.setSize(w,h);
@@ -767,38 +922,59 @@ function initDevelopment3D(d) {
   dev3dRenderer.shadowMap.type=THREE.PCFSoftShadowMap;
   holder.insertBefore(dev3dRenderer.domElement,holder.firstChild);
 
-  dev3dScene.add(new THREE.HemisphereLight(0xe9eef2,0x3b4247,1.15));
-  const sun=new THREE.DirectionalLight(0xfff0d6,1.7);
-  sun.position.set(12,18,8); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
+  dev3dScene.add(new THREE.HemisphereLight(0xF4F7F8,0x475056,1.35));
+  const sun=new THREE.DirectionalLight(0xFFF1D1,2.0);
+  sun.position.set(14,24,10);
+  sun.castShadow=true;
+  sun.shadow.mapSize.set(1536,1536);
+  sun.shadow.camera.left=-25; sun.shadow.camera.right=25;
+  sun.shadow.camera.top=25; sun.shadow.camera.bottom=-25;
   dev3dScene.add(sun);
 
-  const ground=dev3dBox(30,0.12,24,dev3dMat(0x6F786F,0.98),0,-0.06,0);
+  const ground=dev3dBox(34,0.16,28,dev3dMat(0x7C857B,0.98),0,-0.08,0);
   dev3dScene.add(ground);
 
-  const roadMat=dev3dMat(0x34393D,0.9);
-  dev3dScene.add(dev3dBox(27,0.03,2.8,roadMat,0,0,0));
-  dev3dScene.add(dev3dBox(2.8,0.035,22,roadMat,0,0,0));
+  // Основная дорожная сеть и пешеходные связи.
+  const roadMat=dev3dMat(0x343A3E,0.92);
+  dev3dScene.add(dev3dBox(31,0.035,2.7,roadMat,0,0.02,0));
+  dev3dScene.add(dev3dBox(2.7,0.04,25,roadMat,0,0.02,0));
+  dev3dScene.add(dev3dBox(2.2,0.04,22,roadMat,10.8,0.02,0));
+  dev3dScene.add(dev3dBox(2.2,0.04,22,roadMat,-10.8,0.02,0));
 
-  const buildingPositions=[[-7,-6,15], [0,-6,17], [7,-6,16], [-5,5,18], [5,5,19]];
-  buildingPositions.forEach((p,i)=>dev3dScene.add(dev3dBuilding(i+1,p[2],p[0],p[1])));
+  dev3dPath(8.5,0.42,0,2.2,0);
+  dev3dPath(0.42,9.0,-0.2,2.3,0);
+  dev3dScene.add(dev3dPath(8.0,0.5,0,2.2,0));
+  dev3dScene.add(dev3dPath(0.46,9.0,-0.2,2.3,0));
 
-  const courtyard=dev3dBox(8.5,0.05,7.5,dev3dMat(0x8A927D,0.95),0,0.02,2.8);
-  courtyard.userData.building=0; dev3dScene.add(courtyard);
+  ATMOSFERA_BUILDINGS.forEach(def=>dev3dScene.add(dev3dBuilding(def)));
 
-  const treeMat=dev3dMat(0x4D6A4B,0.95), trunkMat=dev3dMat(0x67533E,0.95);
-  for(let i=0;i<26;i++){
-    const x=((i*7)%24)-12, z=((i*11)%18)-9;
-    if(Math.abs(x)<4 && Math.abs(z)<3) continue;
-    const t=new THREE.Group();
-    t.add(dev3dBox(0.14,0.7,0.14,trunkMat,0,0.35,0));
-    const crown=new THREE.Mesh(new THREE.SphereGeometry(0.48,10,8),treeMat);
-    crown.position.y=0.95; crown.castShadow=true; t.add(crown);
-    t.position.set(x,0,z); dev3dScene.add(t);
-  }
+  // Центральный двор.
+  const courtyard=dev3dBox(7.2,0.05,7.5,dev3dMat(0x8F987E,0.98),0,0.035,2.3);
+  courtyard.userData.feature="courtyard";
+  dev3dScene.add(courtyard);
+
+  // Мечеть и зоны инфраструктуры.
+  dev3dScene.add(dev3dMosque(-0.1,3.5));
+  dev3dScene.add(dev3dParking(10.4,-7.1));
+  dev3dScene.add(dev3dPlayground(-5.3,1.9));
+  dev3dScene.add(dev3dPlayground(5.2,1.9));
+
+  const trees=[
+    [-13,-9,1.1],[-10,-2,0.9],[-12,7,1.15],[-8,9,0.85],[-2,9,0.95],
+    [2,9,1.0],[9,8,1.15],[12,2,0.85],[12,-2,1.0],[10,-10,0.9],
+    [3,-9,1.1],[-3,-9,0.9],[-14,3,0.9],[14,4,1.0]
+  ];
+  trees.forEach(t=>dev3dScene.add(dev3dTree(t[0],t[1],t[2])));
+
+  [[-9,-4],[-3,-4],[4,-4],[9,0],[-8,5],[8,5],[-2,0],[2,0],[-11,8],[11,8]]
+    .forEach(p=>dev3dScene.add(dev3dLamp(p[0],p[1])));
 
   const info=document.getElementById("dev3d-info");
+  if(info) info.textContent="Нажмите на корпус. Затем выберите этаж.";
+
   const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
   dev3dRenderer.domElement.addEventListener("pointerup",e=>{
+    if(e.target!==dev3dRenderer.domElement) return;
     const r=dev3dRenderer.domElement.getBoundingClientRect();
     mouse.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
     ray.setFromCamera(mouse,dev3dCamera);
@@ -807,9 +983,7 @@ function initDevelopment3D(d) {
       let o=hit.object;
       while(o && o!==dev3dScene && !o.userData.building) o=o.parent;
       if(o && o.userData.building){
-        if(o.userData.building===0){info.textContent="Двор · зона благоустройства. Состав элементов уточняется по официальной документации."; return;}
-        const floors=[15,17,16,18,19][o.userData.building-1];
-        info.textContent=`Корпус ${o.userData.building} · ${floors} этажей · точная конфигурация и нумерация квартир будет подключена по шахматке.`;
+        dev3dShowBuildingInfo(o.userData.building);
         return;
       }
     }
@@ -819,27 +993,39 @@ function initDevelopment3D(d) {
     const box=new THREE.Box3().setFromObject(dev3dScene);
     const center=box.getCenter(new THREE.Vector3());
     const size=box.getSize(new THREE.Vector3());
-    const dist=Math.max(size.x,size.z)*0.78;
-    dev3dCamera.position.set(center.x+dist,dist*0.72,center.z+dist);
-    dev3dCamera.lookAt(center.x,0,center.z);
-    dev3dControls=new THREE.OrbitControls(dev3dCamera,dev3dRenderer.domElement);
-    dev3dControls.enableDamping=true; dev3dControls.dampingFactor=0.07;
+    const dist=Math.max(size.x,size.z)*0.83;
+    dev3dCamera.position.set(center.x+dist,dist*0.74,center.z+dist*0.88);
+    dev3dControls=dev3dControls || new THREE.OrbitControls(dev3dCamera,dev3dRenderer.domElement);
+    dev3dControls.enableDamping=true;
+    dev3dControls.dampingFactor=0.065;
     dev3dControls.maxPolarAngle=Math.PI*0.47;
-    dev3dControls.minDistance=8; dev3dControls.maxDistance=45;
-    dev3dControls.target.set(center.x,0,center.z);
+    dev3dControls.minDistance=9;
+    dev3dControls.maxDistance=48;
+    dev3dControls.target.set(center.x,0.8,center.z);
     dev3dControls.update();
   }
   frame();
-  document.getElementById("dev3d-reset").onclick=frame;
+
+  const reset=document.getElementById("dev3d-reset");
+  if(reset) reset.onclick=frame;
+
+  function resize(){
+    const nw=holder.clientWidth||900, nh=holder.clientHeight||420;
+    dev3dCamera.aspect=nw/nh;
+    dev3dCamera.updateProjectionMatrix();
+    dev3dRenderer.setSize(nw,nh);
+  }
+  window.addEventListener("resize",resize);
 
   function animate(){
     dev3dFrame=requestAnimationFrame(animate);
-    dev3dControls.update();
+    if(dev3dControls) dev3dControls.update();
     dev3dRenderer.render(dev3dScene,dev3dCamera);
   }
   animate();
 
-  document.getElementById("dev3d-loading").style.display="none";
+  const loading=document.getElementById("dev3d-loading");
+  if(loading) loading.style.display="none";
 }
 
 /* =========================================================
