@@ -344,8 +344,16 @@
   .atmosfera-plan-title{font-family:"Fraunces",serif;font-size:20px;margin-top:4px;}
   .atmosfera-plan-close{width:34px;height:34px;border-radius:50%;background:var(--bg);border:1px solid var(--line);font-size:24px;line-height:1;color:var(--ink-dim);}
   .atmosfera-plan-meta{padding:0 18px 12px;font-size:12px;color:var(--ink-dim);}
+  .atmosfera-plan-tabs{display:flex;gap:7px;padding:0 16px 11px;}
+  .atmosfera-plan-tab{flex:1;padding:9px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg);font-size:11.5px;color:var(--ink-dim);}
+  .atmosfera-plan-tab.active{background:var(--gold);border-color:var(--gold);color:#1A1A1A;font-weight:700;}
+  .atmosfera-plan-pane{display:none;}
+  .atmosfera-plan-pane.active{display:block;}
   .atmosfera-plan-canvas-wrap{position:relative;min-height:280px;max-height:68vh;overflow:auto;background:#eef2f4;border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:center;padding:10px;}
   .atmosfera-plan-canvas-wrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 8px 28px rgba(0,0,0,.18);}
+  .atmosfera-interior-3d-wrap{position:relative;height:min(62vh,560px);min-height:340px;background:#111619;border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;}
+  .atmosfera-interior-3d-wrap canvas{display:block;width:100%!important;height:100%!important;}
+  .atmosfera-interior-note{padding:10px 14px;font-size:11px;line-height:1.5;color:var(--ink-dim);}
   .atmosfera-plan-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 16px calc(12px + env(safe-area-inset-bottom,0px));font-size:11px;color:var(--ink-dim);}
   .atmosfera-plan-footer a{color:var(--gold);white-space:nowrap;}
   .dev-apartment-card{cursor:pointer;}
@@ -463,9 +471,23 @@
       <button class="atmosfera-plan-close" type="button" data-plan-close="1" aria-label="Закрыть">×</button>
     </div>
     <div class="atmosfera-plan-meta" id="atmosfera-plan-meta"></div>
-    <div class="atmosfera-plan-canvas-wrap" id="atmosfera-plan-canvas-wrap">
-      <div class="viewer-loading" id="atmosfera-plan-loading">Загрузка планировки…</div>
-      <canvas id="atmosfera-plan-canvas"></canvas>
+    <div class="atmosfera-plan-tabs">
+      <button class="atmosfera-plan-tab active" type="button" data-atmo-tab="plan">Планировка</button>
+      <button class="atmosfera-plan-tab" type="button" data-atmo-tab="3d">3D интерьер</button>
+    </div>
+    <div class="atmosfera-plan-pane active" id="atmosfera-plan-pane">
+      <div class="atmosfera-plan-canvas-wrap" id="atmosfera-plan-canvas-wrap">
+        <div class="viewer-loading" id="atmosfera-plan-loading">Загрузка планировки…</div>
+        <canvas id="atmosfera-plan-canvas"></canvas>
+      </div>
+    </div>
+    <div class="atmosfera-plan-pane" id="atmosfera-3d-pane">
+      <div class="atmosfera-interior-3d-wrap" id="atmosfera-interior-3d-wrap">
+        <div class="viewer-loading" id="atmosfera-interior-loading">Загрузка 3D-интерьера…</div>
+        <button class="viewer-reset" id="atmosfera-interior-reset" type="button">Сбросить вид</button>
+      </div>
+      <div class="atmosfera-interior-note">Визуальная 3D-реконструкция по графической планировке. Геометрические размеры помещений ориентировочные; мебель добавлена для понимания масштаба.</div>
+      <a class="dev-apartment-action" id="atmosfera-interior-wa" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;">Уточнить эту квартиру в WhatsApp</a>
     </div>
     <div class="atmosfera-plan-footer">
       <span id="atmosfera-plan-source">Источник: «Планировки атмосфера.pdf»</span>
@@ -981,6 +1003,175 @@ function renderAtmosferaApartments(buildingId,floor){
   });
 }
 
+const ATMOSFERA_INTERIOR_CONFIGS = {
+  13: {kind:"2E",rooms:[
+    {name:"Кухня-гостиная",area:"30,58 м²",x:-0.2,z:0.7,w:4.8,d:5.0,role:"living"},
+    {name:"Спальня",area:"17,64 м²",x:2.6,z:3.8,w:2.7,d:3.0,role:"bed"},
+    {name:"Санузел",area:"6,17 м²",x:-2.5,z:3.5,w:2.0,d:2.4,role:"bath"},
+    {name:"Холл",area:"4,76 м²",x:0.8,z:3.5,w:1.7,d:2.1,role:"hall"}
+  ]},
+  14: {kind:"2к",rooms:[
+    {name:"Кухня",area:"15,67 м²",x:-3.0,z:0,w:3.1,d:4.7,role:"kitchen"},
+    {name:"Гостиная",area:"22,57 м²",x:0.2,z:0,w:3.3,d:4.7,role:"living"},
+    {name:"Спальня",area:"20,44 м²",x:3.2,z:2.2,w:2.6,d:3.5,role:"bed"},
+    {name:"Комната",area:"6,45 м²",x:3.2,z:-2.3,w:2.6,d:2.1,role:"bed"},
+    {name:"Холл",area:"13,19 м²",x:0.3,z:3.0,w:2.5,d:1.5,role:"hall"},
+    {name:"Санузел",area:"5,65 м²",x:-3.0,z:3.1,w:2.5,d:1.7,role:"bath"},
+    {name:"WC",area:"2,46 м²",x:-3.0,z:4.3,w:1.1,d:1.1,role:"bath"}
+  ]},
+  15: {kind:"2к",rooms:[
+    {name:"Спальня",area:"20,16 м²",x:-3.0,z:0.8,w:3.0,d:4.5,role:"bed"},
+    {name:"Гостиная",area:"21,83 м²",x:0.3,z:0.8,w:3.4,d:4.5,role:"living"},
+    {name:"Кухня",area:"14,14 м²",x:3.2,z:-2.2,w:2.1,d:3.2,role:"kitchen"},
+    {name:"Холл",area:"12,84 м²",x:0,z:3.4,w:3.8,d:1.5,role:"hall"},
+    {name:"Санузел",area:"4,57 м²",x:3.2,z:3.2,w:1.8,d:1.8,role:"bath"},
+    {name:"WC",area:"2,06 м²",x:4.0,z:1.5,w:1.0,d:1.0,role:"bath"}
+  ]},
+  16: {kind:"2к",rooms:[
+    {name:"Гостиная",area:"21,85 м²",x:1.3,z:0.3,w:4.0,d:4.8,role:"living"},
+    {name:"Кухня",area:"11,22 м²",x:-2.0,z:0.3,w:2.5,d:3.8,role:"kitchen"},
+    {name:"Спальня",area:"10,61 м²",x:2.4,z:3.3,w:2.6,d:2.6,role:"bed"},
+    {name:"Санузел",area:"5,31 м²",x:-2.1,z:3.2,w:2.3,d:2.0,role:"bath"},
+    {name:"Холл",area:"5,69 м²",x:0,z:3.5,w:2.0,d:1.7,role:"hall"}
+  ]}
+};
+
+function atmosferaFallbackInteriorConfig(type,area){
+  const base = type || "2Е";
+  const livingArea = base==="3Е" ? "≈30 м²" : base==="3к" ? "≈23 м²" : base==="2к" ? "≈22 м²" : "≈25 м²";
+  const rooms = [];
+  if(base==="1к") rooms.push(
+    {name:"Кухня-гостиная",area:livingArea,x:0,z:0,w:4.8,d:4.8,role:"living"},
+    {name:"Спальная зона",area:"≈14 м²",x:2.6,z:3.1,w:2.6,d:2.6,role:"bed"}
+  );
+  else if(base==="2Е") rooms.push(
+    {name:"Кухня-гостиная",area:livingArea,x:-0.3,z:0,w:4.9,d:4.7,role:"living"},
+    {name:"Спальня",area:"≈18 м²",x:2.8,z:3.0,w:2.8,d:2.8,role:"bed"}
+  );
+  else if(base==="3Е") rooms.push(
+    {name:"Кухня-гостиная",area:livingArea,x:0,z:0,w:5.1,d:4.7,role:"living"},
+    {name:"Спальня 1",area:"≈15 м²",x:-2.9,z:3.1,w:2.5,d:2.8,role:"bed"},
+    {name:"Спальня 2",area:"≈13 м²",x:2.9,z:3.1,w:2.5,d:2.8,role:"bed"}
+  );
+  else if(base==="3к") rooms.push(
+    {name:"Гостиная",area:"≈21 м²",x:0,z:0,w:4.2,d:4.5,role:"living"},
+    {name:"Кухня",area:"≈15 м²",x:-3.0,z:0,w:2.2,d:4.1,role:"kitchen"},
+    {name:"Спальня 1",area:"≈16 м²",x:2.9,z:3.1,w:2.5,d:2.8,role:"bed"},
+    {name:"Спальня 2",area:"≈13 м²",x:-1.0,z:3.4,w:2.2,d:2.2,role:"bed"},
+    {name:"Спальня 3",area:"≈12 м²",x:1.2,z:3.4,w:2.2,d:2.2,role:"bed"}
+  );
+  else rooms.push(
+    {name:"Гостиная",area:"≈20 м²",x:0,z:0,w:4.2,d:4.5,role:"living"},
+    {name:"Кухня",area:"≈13 м²",x:-3.0,z:0,w:2.2,d:4.0,role:"kitchen"},
+    {name:"Спальня 1",area:"≈16 м²",x:2.8,z:3.0,w:2.6,d:2.8,role:"bed"},
+    {name:"Спальня 2",area:"≈13 м²",x:-0.8,z:3.4,w:2.1,d:2.2,role:"bed"}
+  );
+  rooms.push({name:"Санузел",area:"по плану",x:-2.7,z:3.5,w:2.0,d:1.8,role:"bath"});
+  rooms.push({name:"Холл",area:"по плану",x:0,z:3.4,w:2.0,d:1.5,role:"hall"});
+  return {kind:base,rooms};
+}
+
+function atmosferaInteriorMaterial(color,roughness=0.8){
+  return new THREE.MeshStandardMaterial({color,roughness});
+}
+function atmosferaInteriorBox(group,w,h,d,x,y,z,mat){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; group.add(m); return m;
+}
+function atmosferaInteriorLabel(text,x,y,z){
+  const canvas=document.createElement("canvas"); canvas.width=512; canvas.height=128;
+  const ctx=canvas.getContext("2d"); ctx.clearRect(0,0,512,128);
+  ctx.fillStyle="rgba(14,18,20,.78)"; ctx.roundRect(8,16,496,92,22); ctx.fill();
+  ctx.fillStyle="#F2F4F5"; ctx.font="700 34px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(text,256,62);
+  const tex=new THREE.CanvasTexture(canvas); const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false});
+  const s=new THREE.Sprite(mat); s.scale.set(2.2,.55,1); s.position.set(x,y,z); return s;
+}
+function atmosferaBuildInteriorRoom(group,r){
+  const floorMat = r.role==="bath" ? atmosferaInteriorMaterial(0xD0D8D7,.55) : r.role==="kitchen" ? atmosferaInteriorMaterial(0xC9C3B7,.78) : r.role==="bed" ? atmosferaInteriorMaterial(0xBFA98D,.8) : atmosferaInteriorMaterial(0xC9B08B,.82);
+  atmosferaInteriorBox(group,r.w,0.07,r.d,r.x,0.035,r.z,floorMat);
+}
+function atmosferaBuildFurniture(group,r){
+  const wood=atmosferaInteriorMaterial(0x76563A,.72), fabric=atmosferaInteriorMaterial(0x59636A,.9), light=atmosferaInteriorMaterial(0xE5DDD0,.9), dark=atmosferaInteriorMaterial(0x2E3437,.6), white=atmosferaInteriorMaterial(0xF4F2EC,.28);
+  if(r.role==="bed"){
+    atmosferaInteriorBox(group,1.65,.26,2.0,r.x,r.y? r.y:.17,r.z,light);
+    atmosferaInteriorBox(group,1.75,.45,.1,r.x,r.y? r.y:.5,r.z-0.94,wood);
+  } else if(r.role==="living"){
+    atmosferaInteriorBox(group,2.3,.38,.85,r.x,r.y? r.y:.23,r.z+0.3,fabric);
+    atmosferaInteriorBox(group,2.3,.42,.12,r.x,r.y? r.y:.58,r.z-0.08,fabric);
+    atmosferaInteriorBox(group,0.9,.48,.12,r.x,r.y? r.y:.32,r.z-1.2,dark);
+  } else if(r.role==="kitchen"){
+    const back=r.z-r.d/2+0.38;
+    atmosferaInteriorBox(group,r.w*.72,.82,.6,r.x,0.41,back,dark);
+    atmosferaInteriorBox(group,r.w*.72,.06,.64,r.x,0.85,back,white);
+    atmosferaInteriorBox(group,.55,.82,.6,r.x-r.w*.28,0.41,back,dark);
+    atmosferaInteriorBox(group,.95,.06,.8,r.x,0.76,r.z,wood);
+  } else if(r.role==="bath"){
+    atmosferaInteriorBox(group,1.5,.38,.72,r.x,0.19,r.z,white);
+    atmosferaInteriorBox(group,.45,.4,.55,r.x+r.w*.25,0.2,r.z-.45,white);
+  }
+}
+function initAtmosferaInterior3D(a){
+  const holder=document.getElementById("atmosfera-interior-3d-wrap");
+  const loading=document.getElementById("atmosfera-interior-loading");
+  if(!holder) return;
+  if(holder.__renderer){
+    holder.__renderer.dispose();
+    holder.querySelectorAll("canvas").forEach(x=>x.remove());
+    holder.__renderer=null;
+    if(holder.__frame) cancelAnimationFrame(holder.__frame);
+  }
+  const width=holder.clientWidth||900,height=holder.clientHeight||520;
+  const scene=new THREE.Scene();
+  scene.background=new THREE.Color(0xB6C3C8);
+  const camera=new THREE.PerspectiveCamera(46,width/height,.1,120);
+  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2)); renderer.setSize(width,height);
+  renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  holder.insertBefore(renderer.domElement,holder.firstChild);
+  holder.__renderer=renderer;
+  scene.add(new THREE.HemisphereLight(0xFFF9EC,0x586268,1.35));
+  const sun=new THREE.DirectionalLight(0xFFF0D6,1.8); sun.position.set(5,10,4); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024); scene.add(sun);
+  const group=new THREE.Group();
+  const page=a.page;
+  const config=ATMOSFERA_INTERIOR_CONFIGS[page] || atmosferaFallbackInteriorConfig(a.meta.split(" · ")[0],a.area);
+  const rooms=config.rooms;
+  rooms.forEach(r=>{atmosferaBuildInteriorRoom(group,r); atmosferaBuildFurniture(group,r); group.add(atmosferaInteriorLabel(r.name+" · "+r.area,r.x,2.75,r.z));});
+  const minX=Math.min(...rooms.map(r=>r.x-r.w/2)),maxX=Math.max(...rooms.map(r=>r.x+r.w/2));
+  const minZ=Math.min(...rooms.map(r=>r.z-r.d/2)),maxZ=Math.max(...rooms.map(r=>r.z+r.d/2));
+  const outerW=maxX-minX+0.35, outerD=maxZ-minZ+0.35;
+  const wallMat=atmosferaInteriorMaterial(0xE8E2D9,.9);
+  const wallH=2.75,wt=.12;
+  const wall=(w,h,d,x,y,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),wallMat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;group.add(m);};
+  wall(outerW,wallH,wt,(minX+maxX)/2,wallH/2,minZ); wall(outerW,wallH,wt,(minX+maxX)/2,wallH/2,maxZ);
+  wall(wt,wallH,outerD,minX,wallH/2,(minZ+maxZ)/2); wall(wt,wallH,outerD,maxX,wallH/2,(minZ+maxZ)/2);
+  rooms.forEach((r,i)=>{
+    if(i===rooms.length-1) return;
+    if(r.role==="hall") return;
+    const right=r.x+r.w/2;
+    const edge=minX;
+    if(Math.abs(right-maxX)>0.4) wall(wt,wallH,Math.min(r.d,outerD*.8),right,wallH/2,r.z);
+  });
+  const floor=new THREE.Mesh(new THREE.BoxGeometry(outerW+.5,.08,outerD+.5),atmosferaInteriorMaterial(0xBDB5A7,.95));
+  floor.position.set((minX+maxX)/2,-.06,(minZ+maxZ)/2);floor.receiveShadow=true;group.add(floor);
+  scene.add(group);
+  const center=new THREE.Vector3((minX+maxX)/2,0,(minZ+maxZ)/2);
+  const span=Math.max(outerW,outerD);
+  const controls=new THREE.OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true; controls.dampingFactor=.08; controls.minDistance=span*.75; controls.maxDistance=span*2.4; controls.maxPolarAngle=Math.PI*.48; controls.target.set(center.x,.8,center.z);
+  camera.position.set(center.x+span*1.0,span*.82,center.z+span*1.05); controls.update();
+  if(loading) loading.style.display="none";
+  const resize=()=>{const w=holder.clientWidth||900,h=holder.clientHeight||520;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);};
+  holder.__resize=resize;
+  holder.__reset=()=>{camera.position.set(center.x+span*1.0,span*.82,center.z+span*1.05);controls.target.set(center.x,.8,center.z);controls.update();};
+  const animate=()=>{holder.__frame=requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);};
+  holder.__frame=requestAnimationFrame(animate);
+}
+function atmosferaInteriorShow3D(a){
+  const planPane=document.getElementById("atmosfera-plan-pane"), pane3d=document.getElementById("atmosfera-3d-pane");
+  document.querySelectorAll(".atmosfera-plan-tab").forEach(b=>b.classList.toggle("active",b.dataset.atmoTab==="3d"));
+  planPane.classList.remove("active"); pane3d.classList.add("active");
+  initAtmosferaInterior3D(a);
+}
 const ATMOSFERA_PLAN_PDF_URL="https://raw.githubusercontent.com/denisyltanovmagamed-netizen/realyty3d/main/%D0%9F%D0%BB%D0%B0%D0%BD%D0%B8%D1%80%D0%BE%D0%B2%D0%BA%D0%B8%20%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0.pdf";
 let atmosferaPdfDoc=null;
 let atmosferaPdfLoading=null;
@@ -1005,6 +1196,22 @@ async function showAtmosferaPlan(a){
   title.textContent=label+" "+a.number;
   meta.textContent="Подъезд "+a.buildingId+" · "+a.floor+" этаж · "+a.area+" · "+a.meta.split("\n")[0];
   link.href=ATMOSFERA_PLAN_PDF_URL+"#page="+a.page;
+  document.querySelectorAll(".atmosfera-plan-tab").forEach(function(btn){
+    btn.onclick=function(){
+      const is3d=btn.dataset.atmoTab==="3d";
+      document.querySelectorAll(".atmosfera-plan-tab").forEach(x=>x.classList.toggle("active",x===btn));
+      document.getElementById("atmosfera-plan-pane").classList.toggle("active",!is3d);
+      document.getElementById("atmosfera-3d-pane").classList.toggle("active",is3d);
+      if(is3d) initAtmosferaInterior3D(a);
+    };
+  });
+  const wa=document.getElementById("atmosfera-interior-wa");
+  if(wa) wa.href="https://wa.me/"+REALTOR_PHONE+"?text="+encodeURIComponent("Здравствуйте! Интересует квартира №"+a.number+" в ЖК «Атмосфера», подъезд "+a.buildingId+", "+a.floor+" этаж, "+a.area+". Можно узнать наличие и цену?");
+  const reset3d=document.getElementById("atmosfera-interior-reset");
+  if(reset3d) reset3d.onclick=function(){
+    const holder=document.getElementById("atmosfera-interior-3d-wrap");
+    if(holder && holder.__reset) holder.__reset();
+  };
   modal.classList.add("open");
   modal.setAttribute("aria-hidden","false");
   document.body.style.overflow="hidden";
