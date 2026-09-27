@@ -152,6 +152,20 @@
   .dev-fact-label{font-size:11.5px;color:var(--ink-dim);}
   .dev-fact-value{font-size:15px;margin-top:3px;}
   .dev-objects-list{padding:14px 20px 8px;display:flex;flex-direction:column;gap:14px;}
+  .dev-structure{padding:0 20px 10px;}
+  .dev-structure-card{background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
+  .dev-structure-summary{font-size:13px;line-height:1.55;color:#D9D5CE;}
+  .dev-building-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px;}
+  .dev-building-chip{min-height:54px;padding:10px 11px;border:1px solid var(--line);border-radius:12px;background:var(--bg);text-align:left;display:flex;flex-direction:column;gap:3px;}
+  .dev-building-chip strong{font-size:13px;color:var(--ink);}
+  .dev-building-chip span{font-size:11px;color:var(--ink-dim);line-height:1.35;}
+  .dev-building-chip.active{border-color:var(--gold-dim);box-shadow:inset 0 0 0 1px rgba(185,146,79,.16);}
+  .dev-data-note{margin-top:12px;padding:11px 12px;border-radius:11px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);font-size:11.5px;color:var(--ink-dim);line-height:1.55;}
+  .dev-data-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:12px;background:var(--line);border:1px solid var(--line);border-radius:11px;overflow:hidden;}
+  .dev-data-item{background:var(--bg);padding:10px 11px;}
+  .dev-data-item-label{font-size:10.5px;color:var(--ink-dim);}
+  .dev-data-item-value{font-size:12.5px;margin-top:3px;}
+  @media (min-width:680px){.dev-building-grid{grid-template-columns:repeat(5,minmax(0,1fr));}}
 
   /* ---------- Personal block ---------- */
   .personal-block{
@@ -384,6 +398,16 @@
         <div class="viewer-info-empty" id="dev3d-info">Нажимайте на корпуса, чтобы посмотреть их характеристики</div>
       </div>
       <div style="padding:2px 14px 12px;font-size:11.5px;color:var(--ink-dim);">Один палец — вращение · Два пальца — зум/сдвиг</div>
+    </div>
+  </div>
+
+  <div id="dev-structure" class="dev-structure" style="display:none;">
+    <div class="section-label" style="padding-left:0;padding-right:0;">Корпуса и квартирография</div>
+    <div class="dev-structure-card">
+      <div class="dev-structure-summary" id="dev-structure-summary"></div>
+      <div class="dev-building-grid" id="dev-building-grid"></div>
+      <div class="dev-data-grid" id="dev-data-grid"></div>
+      <div class="dev-data-note" id="dev-data-note"></div>
     </div>
   </div>
 
@@ -684,7 +708,7 @@ function renderDevelopment(id) {
         `).join("")}
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:11px;color:var(--ink-dim);">
-        <span>Фото проекта из открытой галереи Grozny Estate</span>
+        <span>Фото проекта из открытой галереи Sellox</span>
         <a href="${d.sourceUrl}" target="_blank" rel="noopener" style="color:inherit;">Источник</a>
       </div>
     `;
@@ -712,6 +736,8 @@ function renderDevelopment(id) {
       planEl.innerHTML = "";
     }
   }
+
+  renderAtmosferaStructure(d);
 
   const dev3d = document.getElementById("dev-3d-section");
   dev3d.style.display = d.hasSite3D ? "block" : "none";
@@ -752,6 +778,25 @@ const ATMOSFERA_BUILDINGS = [
   {id:4, visualFloors:16, x:-4.5, z:5.6, w:4.8, d:7.7, tone:0xC6C8C8},
   {id:5, visualFloors:15, x:4.5, z:5.6, w:4.8, d:7.7, tone:0xB8BCBD}
 ];
+/* Данные ЖК «Атмосфера»: точные этажи корпусов и номера квартир не выдумываем.
+ * После получения подтверждённой шахматки эти поля заполняются без переписывания логики сцены. */
+const ATMOSFERA_STRUCTURE = {
+  buildings: [
+    {id:1, floors:null},
+    {id:2, floors:null},
+    {id:3, floors:null},
+    {id:4, floors:null},
+    {id:5, floors:null}
+  ],
+  typicalFloor: {
+    layoutCount: 6,
+    roomTypes: "2- и 3-комнатные",
+    areaRange: "57,23–95,37 м²",
+    sourceUrl: "https://sellox.ru/property/zhk-atmosfera-v-groznom/",
+    planImage: "https://sellox.ru/wp-content/uploads/2024/07/%D0%9F%D0%BB%D0%B0%D0%BD-%D1%82%D0%B8%D0%BF%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE-%D1%8D%D1%82%D0%B0%D0%B6%D0%B0-%D0%96%D0%9A-%D0%90%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0.webp"
+  },
+  apartments: []
+};
 
 function dev3dMat(color, roughness=0.72, metalness=0) {
   return new THREE.MeshStandardMaterial({ color, roughness, metalness });
@@ -901,6 +946,36 @@ function dev3dPlayground(x,z){
   return g;
 }
 
+function renderAtmosferaStructure(d){
+  const section=document.getElementById("dev-structure");
+  const grid=document.getElementById("dev-building-grid");
+  const summary=document.getElementById("dev-structure-summary");
+  const dataGrid=document.getElementById("dev-data-grid");
+  const note=document.getElementById("dev-data-note");
+  if(!section || !grid || !summary || !dataGrid || !note || d.id!=="zhk-atmosfera") return;
+
+  section.style.display="block";
+  summary.textContent="5 корпусов • переменная этажность 15–19 этажей • 6 планировочных типов на типовом этаже.";
+  grid.innerHTML=ATMOSFERA_STRUCTURE.buildings.map(function(b){
+    return "<button class=\"dev-building-chip\" type=\"button\" data-building-id=\"" + b.id + "\"><strong>Корпус " + b.id + "</strong><span>" + (b.floors ? b.floors+" этажей" : "этажность уточняется") + "</span></button>";
+  }).join("");
+  grid.querySelectorAll("[data-building-id]").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      const id=Number(btn.dataset.buildingId);
+      grid.querySelectorAll(".dev-building-chip").forEach(function(x){x.classList.remove("active");});
+      btn.classList.add("active");
+      dev3dShowBuildingInfo(id);
+      const viewer=document.getElementById("dev-3d-holder");
+      if(viewer) viewer.scrollIntoView({behavior:"smooth",block:"center"});
+    });
+  });
+  dataGrid.innerHTML=
+    "<div class=\"dev-data-item\"><div class=\"dev-data-item-label\">Планировок</div><div class=\"dev-data-item-value\">"+ATMOSFERA_STRUCTURE.typicalFloor.layoutCount+"</div></div>"+
+    "<div class=\"dev-data-item\"><div class=\"dev-data-item-label\">Типы</div><div class=\"dev-data-item-value\">"+ATMOSFERA_STRUCTURE.typicalFloor.roomTypes+"</div></div>"+
+    "<div class=\"dev-data-item\"><div class=\"dev-data-item-label\">Диапазон площади</div><div class=\"dev-data-item-value\">"+ATMOSFERA_STRUCTURE.typicalFloor.areaRange+"</div></div>"+
+    "<div class=\"dev-data-item\"><div class=\"dev-data-item-label\">Квартирография</div><div class=\"dev-data-item-value\">"+(ATMOSFERA_STRUCTURE.apartments.length ? "загружена" : "ожидает шахматку")+"</div></div>";
+  note.innerHTML="<strong style=\"color:#F0F2F3;\">Следующий этап:</strong> привязать номера квартир к корпусам и этажам из подтверждённой шахматки. До этого номера намеренно не создаются. <a href=\"" + ATMOSFERA_STRUCTURE.typicalFloor.sourceUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--gold);\">Открыть источник</a>";
+}
 function dev3dShowBuildingInfo(id){
   const def=ATMOSFERA_BUILDINGS.find(b=>b.id===id);
   const info=document.getElementById("dev3d-info");
@@ -982,7 +1057,7 @@ function initDevelopment3D(d) {
   const info=document.getElementById("dev3d-info");
   if(info) info.innerHTML = `
     <div style="font-weight:700;color:#F0F2F3;margin-bottom:4px;">3D-обзор ЖК «Атмосфера»</div>
-    <div style="font-size:11.5px;color:var(--ink-dim);">Нажмите на корпус → выберите этаж. Квартирография будет привязана к опубликованному плану типового этажа и шахматке.</div>
+    <div style="font-size:11.5px;color:var(--ink-dim);">Нажмите на корпус. Этажи и квартиры подключаются из ATMOSFERA_STRUCTURE после появления подтверждённой шахматки.</div>
   `;
 
   const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
