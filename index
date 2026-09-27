@@ -952,7 +952,11 @@ function renderAtmosferaStructure(d){
   const summary=document.getElementById("dev-structure-summary");
   const dataGrid=document.getElementById("dev-data-grid");
   const note=document.getElementById("dev-data-note");
-  if(!section || !grid || !summary || !dataGrid || !note || d.id!=="zhk-atmosfera") return;
+  if(!section || !grid || !summary || !dataGrid || !note) return;
+  if(d.id!=="zhk-atmosfera"){
+    section.style.display="none";
+    return;
+  }
 
   section.style.display="block";
   summary.textContent="5 корпусов • переменная этажность 15–19 этажей • 6 планировочных типов на типовом этаже.";
@@ -980,6 +984,9 @@ function dev3dShowBuildingInfo(id){
   const def=ATMOSFERA_BUILDINGS.find(b=>b.id===id);
   const info=document.getElementById("dev3d-info");
   if(!info || !def) return;
+  document.querySelectorAll("#dev-building-grid .dev-building-chip").forEach(function(btn){
+    btn.classList.toggle("active", Number(btn.dataset.buildingId)===id);
+  });
   info.innerHTML=`
     <div style="font-weight:700;color:#F0F2F3;margin-bottom:5px;">Корпус ${def.id}</div>
     <div style="font-size:11.5px;color:var(--ink-dim);margin-bottom:8px;">ЖК: 15–19 этажей. Точная этажность именно этого корпуса ещё не подтверждена открытым документом.</div>
