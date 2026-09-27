@@ -1,0 +1,121 @@
+name: Enrich ЖК Атмосфера
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  enrich:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update Atmosfera data and gallery
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('index')
+          s = p.read_text(encoding='utf-8')
+
+          old = re.search(r'  \{\n    id: "zhk-atmosfera",.*?\n  \}\n\];', s, re.S)
+          if not old:
+              raise SystemExit('Atmosfera data block not found')
+
+          new = '''  {
+            id: "zhk-atmosfera",
+            title: "ЖК Атмосфера",
+            city: "Грозный",
+            developer: "ООО «Строй-Мечеть»",
+            location: "пересечение просп. Мохаммеда Али и бульв. Султана Дудаева",
+            address: "бульвар Султана Дудаева, Грозный",
+            installmentMax: "до 36 месяцев",
+            completionYear: "Q4 2027",
+            maxRooms: "2–3",
+            maternityCapital: null,
+            buildingsCount: 5,
+            buildingFloors: "15–19",
+            apartmentsCount: 180,
+            undergroundParking: "2 уровня",
+            parkingSpaces: "46 машин + 4 мотоцикла",
+            guestParking: 39,
+            lifts: 4,
+            ceilingHeight: "3 м",
+            finish: "без отделки",
+            apartmentArea: "57,2–95,3 м²",
+            priceFromPerM2: 83000,
+            coverImage: "https://grozny.estate/wp-content/uploads/2024/03/%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-2.webp",
+            galleryImages: [
+              "https://grozny.estate/wp-content/uploads/2024/03/%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-2.webp",
+              "https://grozny.estate/wp-content/uploads/2024/03/%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-3.webp",
+              "https://grozny.estate/wp-content/uploads/2024/03/%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-4.webp",
+              "https://grozny.estate/wp-content/uploads/2024/03/%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%Bгрозный-5.webp"
+            ],
+            coverFallback: DEV_COVER_FALLBACK,
+            hasSite3D: true
+          }
+        ];'''
+          # Correct the final URL if source filename encoding differs.
+          new = new.replace('%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-5', '%D0%B6%D0%BA-%D0%B0%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-%D0%B3%D1%80%D0%BE%D0%B7%D0%BD%D1%8B%D0%B9-5')
+          s = s[:old.start()] + new + s[old.end():]
+
+          marker = '<div class="dev-body">'
+          gallery_html = '''<div id="dev-photo-gallery" style="padding:0 16px 8px;display:none;">
+            <div class="section-label" style="padding-left:0;">Фотографии ЖК</div>
+            <div id="dev-photo-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;"></div>
+          </div>
+          '''
+          if 'id="dev-photo-gallery"' not in s:
+              s = s.replace(marker, gallery_html + marker, 1)
+
+          render_anchor = '  document.getElementById("dev-city").textContent = d.city + (d.location ? " · " + d.location : "");'
+          render_add = render_anchor + '''
+
+  const photoGallery = document.getElementById("dev-photo-gallery");
+  const photoGrid = document.getElementById("dev-photo-grid");
+  if (photoGallery && photoGrid && d.galleryImages?.length) {
+    photoGallery.style.display = "block";
+    photoGrid.innerHTML = d.galleryImages.map((src, i) => `
+      <a href="${src}" target="_blank" rel="noopener" style="display:block;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:#202629;">
+        <img src="${src}" alt="${d.title} — фото ${i + 1}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
+      </a>
+    `).join("");
+  }'''
+          if 'const photoGallery = document.getElementById("dev-photo-gallery")' not in s:
+              s = s.replace(render_anchor, render_add, 1)
+
+          # Replace the previous factual fields with web-sourced fields while keeping the same UI.
+          facts_old = '''    <div class="dev-fact"><div class="dev-fact-label">Застройщик</div><div class="dev-fact-value">${d.developer}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Расположение</div><div class="dev-fact-value">${d.location}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Сдача</div><div class="dev-fact-value">${d.completionYear}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Корпусов</div><div class="dev-fact-value">${d.buildingsCount ?? "—"}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Этажность</div><div class="dev-fact-value">${d.buildingFloors ?? "—"}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Квартир</div><div class="dev-fact-value">${d.apartmentsCount ?? "—"}</div></div>
+    ${d.ceilingHeight ? `<div class="dev-fact"><div class="dev-fact-label">Потолки</div><div class="dev-fact-value">${d.ceilingHeight}</div></div>` : ""}
+    ${d.finish ? `<div class="dev-fact"><div class="dev-fact-label">Отделка</div><div class="dev-fact-value">${d.finish}</div></div>` : ""}'''
+          facts_new = '''    <div class="dev-fact"><div class="dev-fact-label">Застройщик</div><div class="dev-fact-value">${d.developer}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Адрес</div><div class="dev-fact-value">${d.address ?? d.location}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Сдача</div><div class="dev-fact-value">${d.completionYear}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Корпусов</div><div class="dev-fact-value">${d.buildingsCount ?? "—"}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Этажность</div><div class="dev-fact-value">${d.buildingFloors ?? "—"}</div></div>
+    <div class="dev-fact"><div class="dev-fact-label">Площадь</div><div class="dev-fact-value">${d.apartmentArea ?? "—"}</div></div>
+    ${d.ceilingHeight ? `<div class="dev-fact"><div class="dev-fact-label">Потолки</div><div class="dev-fact-value">${d.ceilingHeight}</div></div>` : ""}
+    ${d.lifts ? `<div class="dev-fact"><div class="dev-fact-label">Лифты</div><div class="dev-fact-value">${d.lifts}</div></div>` : ""}
+    ${d.undergroundParking ? `<div class="dev-fact"><div class="dev-fact-label">Паркинг</div><div class="dev-fact-value">${d.undergroundParking}</div></div>` : ""}
+    ${d.finish ? `<div class="dev-fact"><div class="dev-fact-label">Отделка</div><div class="dev-fact-value">${d.finish}</div></div>` : ""}'''
+          if facts_old in s:
+              s = s.replace(facts_old, facts_new, 1)
+
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index
+          git diff --cached --quiet || git commit -m "Enrich ЖК Атмосфера with web-sourced data and photos"
+          git push
