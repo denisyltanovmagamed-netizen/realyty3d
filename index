@@ -165,7 +165,21 @@
   .dev-data-item{background:var(--bg);padding:10px 11px;}
   .dev-data-item-label{font-size:10.5px;color:var(--ink-dim);}
   .dev-data-item-value{font-size:12.5px;margin-top:3px;}
-  @media (min-width:680px){.dev-building-grid{grid-template-columns:repeat(5,minmax(0,1fr));}}
+  .dev-floor-panel{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);}
+  .dev-floor-title{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;color:var(--ink-dim);}
+  .dev-floor-select{display:flex;gap:6px;overflow-x:auto;padding:9px 0 4px;-webkit-overflow-scrolling:touch;}
+  .dev-floor-select::-webkit-scrollbar{display:none;}
+  .dev-floor-chip{flex:0 0 auto;min-width:44px;padding:8px 10px;border:1px solid var(--line);border-radius:999px;background:var(--bg);font-size:11.5px;color:var(--ink-dim);}
+  .dev-floor-chip.active{background:var(--gold);border-color:var(--gold);color:#1A1A1A;font-weight:700;}
+  .dev-apartment-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+  .dev-apartment-card{background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:11px 12px;text-align:left;min-width:0;}
+  .dev-apartment-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .dev-apartment-number{font-size:14px;font-weight:700;color:var(--ink);}
+  .dev-apartment-area{font-family:"Fraunces",serif;font-size:15px;color:var(--gold);white-space:nowrap;}
+  .dev-apartment-meta{font-size:10.5px;color:var(--ink-dim);line-height:1.45;margin-top:5px;}
+  .dev-apartment-penthouse{border-color:var(--gold-dim);background:rgba(185,146,79,.08);}
+  .dev-apartment-badge{display:inline-block;margin-top:7px;font-size:10px;color:var(--gold);border:1px solid var(--gold-dim);border-radius:999px;padding:3px 7px;}
+  @media (min-width:680px){.dev-building-grid{grid-template-columns:repeat(5,minmax(0,1fr));}.dev-apartment-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
 
   /* ---------- Personal block ---------- */
   .personal-block{
@@ -406,6 +420,11 @@
     <div class="dev-structure-card">
       <div class="dev-structure-summary" id="dev-structure-summary"></div>
       <div class="dev-building-grid" id="dev-building-grid"></div>
+      <div class="dev-floor-panel" id="dev-floor-panel" style="display:none;">
+        <div class="dev-floor-title"><span id="dev-floor-title">Этаж</span><span id="dev-floor-count"></span></div>
+        <div class="dev-floor-select" id="dev-floor-select"></div>
+        <div class="dev-apartment-grid" id="dev-apartment-grid"></div>
+      </div>
       <div class="dev-data-grid" id="dev-data-grid"></div>
       <div class="dev-data-note" id="dev-data-note"></div>
     </div>
@@ -772,31 +791,173 @@ function renderDevelopment(id) {
 let dev3dRenderer = null, dev3dScene = null, dev3dCamera = null, dev3dControls = null, dev3dFrame = null;
 
 const ATMOSFERA_BUILDINGS = [
-  {id:1, visualFloors:19, x:-7.0, z:-5.5, w:4.7, d:8.4, tone:0xB9BDC0},
-  {id:2, visualFloors:18, x:0.0, z:-5.2, w:4.7, d:8.1, tone:0xC4C7C8},
-  {id:3, visualFloors:17, x:7.0, z:-5.5, w:4.7, d:8.0, tone:0xB4B9BC},
-  {id:4, visualFloors:16, x:-4.5, z:5.6, w:4.8, d:7.7, tone:0xC6C8C8},
-  {id:5, visualFloors:15, x:4.5, z:5.6, w:4.8, d:7.7, tone:0xB8BCBD}
+  {id:1, floors:19, x:-7.0, z:-5.5, w:4.7, d:8.4, tone:0xB9BDC0},
+  {id:2, floors:18, x:0.0, z:-5.2, w:4.7, d:8.1, tone:0xC4C7C8},
+  {id:3, floors:17, x:7.0, z:-5.5, w:4.7, d:8.0, tone:0xB4B9BC},
+  {id:4, floors:16, x:-4.5, z:5.6, w:4.8, d:7.7, tone:0xC6C8C8},
+  {id:5, floors:15, x:4.5, z:5.6, w:4.8, d:7.7, tone:0xB8BCBD}
 ];
 /* Данные ЖК «Атмосфера»: точные этажи корпусов и номера квартир не выдумываем.
  * После получения подтверждённой шахматки эти поля заполняются без переписывания логики сцены. */
 const ATMOSFERA_STRUCTURE = {
   buildings: [
-    {id:1, floors:null},
-    {id:2, floors:null},
-    {id:3, floors:null},
-    {id:4, floors:null},
-    {id:5, floors:null}
+    {
+      id: 1, floors: 19, apartmentsPerRegularFloor: 4,
+      regularLayouts: [
+        {type:"2к",area:"57,23 м²",view:"невидовая",planPage:16},
+        {type:"2к",area:"80,14 м²",view:"видовая",planPage:15},
+        {type:"2к",area:"86,01 м²",view:"видовая",planPage:14},
+        {type:"2Е",area:"61,71 м²",view:"невидовая",planPage:13}
+      ],
+      penthouses: [
+        {number:69,code:"R1",type:"2Е",area:"104,5 м²",view:"невидовая",plan:"пентхаус I"},
+        {number:70,code:"R2",type:"2к",area:"127,95 м²",view:"видовая",plan:"пентхаус I"},
+        {number:71,type:"2к",area:"80,14 м²",view:"видовая",planPage:15},
+        {number:72,type:"2к",area:"57,23 м²",view:"невидовая",planPage:16}
+      ]
+    },
+    {
+      id: 2, floors: 18, apartmentsPerRegularFloor: 4,
+      regularLayouts: [
+        {type:"3Е",area:"84,91 м²",view:"невидовая",planPage:17},
+        {type:"3к",area:"95,75 м²",view:"видовая",planPage:18},
+        {type:"2Е",area:"61,71 м²",view:"видовая",planPage:19},
+        {type:"2Е",area:"61,71 м²",view:"невидовая",planPage:20}
+      ],
+      penthouses: [
+        {number:137,code:"R3",type:"3Е",area:"141,33 м²",view:"невидовая",plan:"пентхаус II"},
+        {number:138,code:"R4",type:"3к",area:"127,95 м²",view:"видовая",plan:"пентхаус II"},
+        {number:139,type:"2Е",area:"61,71 м²",view:"видовая",planPage:19},
+        {number:140,type:"2Е",area:"61,71 м²",view:"невидовая",planPage:20}
+      ]
+    },
+    {
+      id: 3, floors: 17, apartmentsPerRegularFloor: 5,
+      regularLayouts: [
+        {type:"2Е",area:"61,71 м²",view:"невидовая",planPage:21},
+        {type:"2Е",area:"86,01 м²",view:"видовая",planPage:22},
+        {type:"1к",area:"49,82 м²",view:"видовая",planPage:23},
+        {type:"1к",area:"45,37 м²",view:"видовая",planPage:24},
+        {type:"3Е",area:"84,91 м²",view:"невидовая",planPage:25}
+      ],
+      penthouses: [
+        {number:216,code:"R5",type:"2Е",area:"104,7 м²",view:"невидовая",plan:"пентхаус III"},
+        {number:217,code:"R6",type:"2Е",area:"104,7 м²",view:"видовая",plan:"пентхаус III"},
+        {number:218,type:"1к",area:"49,82 м²",view:"видовая",planPage:23},
+        {number:219,type:"1к",area:"45,37 м²",view:"видовая",planPage:24},
+        {number:220,type:"3Е",area:"84,91 м²",view:"невидовая",planPage:25}
+      ]
+    },
+    {
+      id: 4, floors: 16, apartmentsPerRegularFloor: 4,
+      regularLayouts: [
+        {type:"2Е",area:"61,71 м²",view:"невидовая",planPage:26},
+        {type:"2к",area:"83,05 м²",view:"видовая",planPage:27},
+        {type:"2к",area:"86,01 м²",view:"видовая",planPage:28},
+        {type:"2Е",area:"61,71 м²",view:"невидовая",planPage:29}
+      ],
+      penthouses: [
+        {number:277,code:"R7",type:"2Е",area:"105,8 м²",view:"невидовая",plan:"пентхаус IV"},
+        {number:278,code:"R8",type:"2к",area:"126,6 м²",view:"видовая",plan:"пентхаус IV"},
+        {number:279,type:"2к",area:"86,01 м²",view:"видовая",planPage:28},
+        {number:280,type:"2Е",area:"61,71 м²",view:"невидовая",planPage:29}
+      ]
+    },
+    {
+      id: 5, floors: 15, apartmentsPerRegularFloor: 4,
+      regularLayouts: [
+        {type:"2к",area:"57,23 м²",view:"видовая",planPage:30},
+        {type:"2к",area:"80,14 м²",view:"видовая",planPage:31},
+        {type:"2к",area:"86,01 м²",view:"видовая",planPage:32},
+        {type:"2Е",area:"61,71 м²",view:"невидовая",planPage:33}
+      ],
+      penthouses: []
+    }
   ],
   typicalFloor: {
-    layoutCount: 6,
-    roomTypes: "2- и 3-комнатные",
-    areaRange: "57,23–95,37 м²",
-    sourceUrl: "https://sellox.ru/property/zhk-atmosfera-v-groznom/",
-    planImage: "https://sellox.ru/wp-content/uploads/2024/07/%D0%9F%D0%BB%D0%B0%D0%BD-%D1%82%D0%B8%D0%BF%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE-%D1%8D%D1%82%D0%B0%D0%B6%D0%B0-%D0%96%D0%9A-%D0%90%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0.webp"
+    layoutCount: 9,
+    roomTypes: "1к, 2Е, 2к, 3Е, 3к",
+    ordinaryAreaRange: "45,37–95,75 м²",
+    penthouseAreaRange: "104,5–141,33 м²",
+    sourceChessboard: "Шахматка 1.pdf",
+    sourcePlans: "Планировки атмосфера.pdf"
   },
-  apartments: []
+  totals: {ordinaryApartments: 328, penthouses: 8}
 };
+
+function getAtmosferaStructureBuilding(id){
+  return ATMOSFERA_STRUCTURE.buildings.find(x=>x.id===id);
+}
+function atmosferaApartmentNumberStart(buildingId,floor){
+  if(buildingId===1) return 1+(floor-2)*4;
+  if(buildingId===2) return 73+(floor-2)*4;
+  if(buildingId===3) return 141+(floor-2)*5;
+  if(buildingId===4) return 221+(floor-2)*4;
+  if(buildingId===5) return 281+(floor-2)*4;
+  return null;
+}
+function getAtmosferaFloorApartments(buildingId,floor){
+  const b=getAtmosferaStructureBuilding(buildingId);
+  if(!b || floor<2 || floor>b.floors) return [];
+  if(floor===b.floors && b.penthouses.length) return b.penthouses.map(x=>({...x,floor}));
+  const start=atmosferaApartmentNumberStart(buildingId,floor);
+  return b.regularLayouts.map((layout,i)=>({...layout,number:start+i,floor,isPenthouse:false}));
+}
+function renderAtmosferaApartments(buildingId,floor){
+  const panel=document.getElementById("dev-floor-panel");
+  const floorTitle=document.getElementById("dev-floor-title");
+  const floorCount=document.getElementById("dev-floor-count");
+  const floorSelect=document.getElementById("dev-floor-select");
+  const apartmentGrid=document.getElementById("dev-apartment-grid");
+  const b=getAtmosferaStructureBuilding(buildingId);
+  if(!panel||!floorTitle||!floorCount||!floorSelect||!apartmentGrid||!b) return;
+  panel.style.display="block";
+  const apartments=getAtmosferaFloorApartments(buildingId,floor);
+  floorTitle.textContent="Подъезд "+b.id+" · этаж "+floor;
+  floorCount.textContent=apartments.length+" квартир";
+  floorSelect.innerHTML=Array.from({length:b.floors-1},(_,i)=>b.floors-i).map(f=>
+    '<button class="dev-floor-chip '+(f===floor?'active':'')+'" type="button" data-floor="'+f+'">'+f+'</button>'
+  ).join("");
+  floorSelect.querySelectorAll("[data-floor]").forEach(btn=>btn.addEventListener("click",()=>renderAtmosferaApartments(buildingId,Number(btn.dataset.floor))));
+  apartmentGrid.innerHTML=apartments.map(a=>{
+    const plan=a.planPage ? "Планировка · стр. "+a.planPage : (a.plan || "Планировка");
+    return '<div class="dev-apartment-card '+(a.isPenthouse?'dev-apartment-penthouse':'')+'">'+
+      '<div class="dev-apartment-top"><span class="dev-apartment-number">Кв. '+a.number+(a.code?' · '+a.code:'')+'</span><span class="dev-apartment-area">'+a.area+'</span></div>'+
+      '<div class="dev-apartment-meta">'+a.type+' · '+a.view+'<br>'+plan+'</div>'+
+      (a.isPenthouse?'<span class="dev-apartment-badge">Пентхаус</span>':'')+
+    '</div>';
+  }).join("");
+}
+function renderAtmosferaStructure(d){
+  const section=document.getElementById("dev-structure");
+  const grid=document.getElementById("dev-building-grid");
+  const summary=document.getElementById("dev-structure-summary");
+  const dataGrid=document.getElementById("dev-data-grid");
+  const note=document.getElementById("dev-data-note");
+  if(!section||!grid||!summary||!dataGrid||!note) return;
+  if(d.id!=="zhk-atmosfera"){section.style.display="none";return;}
+  section.style.display="block";
+  summary.textContent="5 подъездов · 15–19 этажей · 328 обычных квартир по сводной шахматке + 8 пентхаусов R1–R8.";
+  grid.innerHTML=ATMOSFERA_STRUCTURE.buildings.map(b=>{
+    const regular=(b.floors-1)*b.apartmentsPerRegularFloor-b.penthouses.length;
+    return '<button class="dev-building-chip '+(b.id===1?'active':'')+'" type="button" data-building-id="'+b.id+'"><strong>Подъезд '+b.id+'</strong><span>'+b.floors+' этажей · '+regular+' обычных квартир</span></button>';
+  }).join("");
+  grid.querySelectorAll("[data-building-id]").forEach(btn=>btn.addEventListener("click",()=>{
+    const id=Number(btn.dataset.buildingId);
+    grid.querySelectorAll(".dev-building-chip").forEach(x=>x.classList.toggle("active",x===btn));
+    dev3dShowBuildingInfo(id);
+    renderAtmosferaApartments(id,getAtmosferaStructureBuilding(id).floors);
+    const viewer=document.getElementById("dev-3d-holder");
+    if(viewer) viewer.scrollIntoView({behavior:"smooth",block:"center"});
+  }));
+  dataGrid.innerHTML=
+    '<div class="dev-data-item"><div class="dev-data-item-label">Типов планировок</div><div class="dev-data-item-value">'+ATMOSFERA_STRUCTURE.typicalFloor.layoutCount+'</div></div>'+
+    '<div class="dev-data-item"><div class="dev-data-item-label">Форматы</div><div class="dev-data-item-value">'+ATMOSFERA_STRUCTURE.typicalFloor.roomTypes+'</div></div>'+
+    '<div class="dev-data-item"><div class="dev-data-item-label">Обычные площади</div><div class="dev-data-item-value">'+ATMOSFERA_STRUCTURE.typicalFloor.ordinaryAreaRange+'</div></div>'+
+    '<div class="dev-data-item"><div class="dev-data-item-label">Пентхаусы</div><div class="dev-data-item-value">'+ATMOSFERA_STRUCTURE.totals.penthouses+'</div></div>';
+  note.innerHTML='<strong style="color:#F0F2F3;">Источник:</strong> «Шахматка 1.pdf» и «Планировки атмосфера.pdf», загруженные в проект. Цвет ячеек шахматки не трактуем как статус наличия.';
+  renderAtmosferaApartments(1,19);
+}
 
 function dev3dMat(color, roughness=0.72, metalness=0) {
   return new THREE.MeshStandardMaterial({ color, roughness, metalness });
@@ -831,10 +992,10 @@ function dev3dWindowMaterial(){
 function dev3dBuilding(def){
   const g=new THREE.Group();
   g.userData.building=def.id;
-  g.userData.floors=def.visualFloors;
+  g.userData.floors=def.floors;
 
   const floorH=0.23;
-  const h=def.visualFloors*floorH;
+  const h=def.floors*floorH;
   const body=dev3dBox(def.w,h,def.d,dev3dMat(def.tone,0.7),0,h/2,0);
   g.add(body);
 
@@ -987,12 +1148,13 @@ function dev3dShowBuildingInfo(id){
   document.querySelectorAll("#dev-building-grid .dev-building-chip").forEach(function(btn){
     btn.classList.toggle("active", Number(btn.dataset.buildingId)===id);
   });
+  const b=getAtmosferaStructureBuilding(id);
   info.innerHTML=`
-    <div style="font-weight:700;color:#F0F2F3;margin-bottom:5px;">Корпус ${def.id}</div>
-    <div style="font-size:11.5px;color:var(--ink-dim);margin-bottom:8px;">ЖК: 15–19 этажей. Точная этажность именно этого корпуса ещё не подтверждена открытым документом.</div>
+    <div style="font-weight:700;color:#F0F2F3;margin-bottom:5px;">Подъезд ${def.id}</div>
+    <div style="font-size:11.5px;color:var(--ink-dim);margin-bottom:8px;">${b.floors} этажей · квартирография подключена.</div>
     <div style="padding:10px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);">
-      <div style="font-size:11px;color:#F0F2F3;font-weight:700;margin-bottom:4px;">Следующий уровень</div>
-      <div style="font-size:11px;color:var(--ink-dim);">Корпус → этаж → квартира подключим после привязки шахматки.</div>
+      <div style="font-size:11px;color:#F0F2F3;font-weight:700;margin-bottom:4px;">Этажи и квартиры</div>
+      <div style="font-size:11px;color:var(--ink-dim);">Ниже отображаются номера квартир, площади, тип и вид по выбранному этажу.</div>
     </div>
   `;
 }
@@ -1064,7 +1226,7 @@ function initDevelopment3D(d) {
   const info=document.getElementById("dev3d-info");
   if(info) info.innerHTML = `
     <div style="font-weight:700;color:#F0F2F3;margin-bottom:4px;">3D-обзор ЖК «Атмосфера»</div>
-    <div style="font-size:11.5px;color:var(--ink-dim);">Нажмите на корпус. Этажи и квартиры подключаются из ATMOSFERA_STRUCTURE после появления подтверждённой шахматки.</div>
+    <div style="font-size:11.5px;color:var(--ink-dim);">Нажмите на подъезд — ниже откроются его этажи и квартиры из шахматки.</div>
   `;
 
   const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
@@ -1078,7 +1240,12 @@ function initDevelopment3D(d) {
       let o=hit.object;
       while(o && o!==dev3dScene && !o.userData.building) o=o.parent;
       if(o && o.userData.building){
-        dev3dShowBuildingInfo(o.userData.building);
+        const id=o.userData.building;
+        dev3dShowBuildingInfo(id);
+        renderAtmosferaApartments(id,getAtmosferaStructureBuilding(id).floors);
+        document.querySelectorAll("#dev-building-grid .dev-building-chip").forEach(btn=>btn.classList.toggle("active",Number(btn.dataset.buildingId)===id));
+        const panel=document.getElementById("dev-floor-panel");
+        if(panel) panel.scrollIntoView({behavior:"smooth",block:"center"});
         return;
       }
     }
