@@ -1026,7 +1026,7 @@ function renderAtmosferaApartments(buildingId,floor){
       e.preventDefault();
       const page=Number(card.dataset.planPage);
       const area=card.querySelector(".dev-apartment-area")?.textContent || "";
-      const number=card.querySelector(".dev-apartment-number")?.textContent || "";
+      const number=(card.querySelector(".dev-apartment-number")?.textContent || "").replace(/^Кв\.\s*/,"").trim();
       const meta=card.querySelector(".dev-apartment-meta")?.innerText || "";
       showAtmosferaPlan({buildingId,floor,number,area,meta,page,isPenthouse:card.classList.contains("dev-apartment-penthouse")});
     });
