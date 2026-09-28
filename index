@@ -613,7 +613,7 @@ const DEVELOPMENTS = [
     location: "пересечение просп. Мохаммеда Али и бульв. Султана Дудаева",
     installmentMax: "до 36 месяцев · ПВ 30% / 50%",
     completionYear: "IV квартал 2027",
-    maxRooms: "2- и 3-комнатные · евро-2",
+    maxRooms: "1к, 2Е, 2к, 3Е, 3к",
     maternityCapital: null,
     buildingsCount: 5,
     buildingFloors: "15–19",
@@ -623,13 +623,13 @@ const DEVELOPMENTS = [
     ceilingHeight: "3 м",
     finish: "без отделки",
     priceFromPerM2: 83000,
-    apartmentArea: "57,2–95,3 м²",
+    apartmentArea: "45,37–95,75 м²",
     elevators: 4,
     facade: "монолитный дом · вентилируемый фасад · панорамное остекление лоджий",
     features: ["мечеть на территории", "коммерческие помещения на 1 этаже", "детские игровые и спортивные площадки", "зоны отдыха и прогулочные пространства", "видеонаблюдение и контроль доступа"],
     floorPlanImage: "https://sellox.ru/wp-content/uploads/2024/07/%D0%9F%D0%BB%D0%B0%D0%BD-%D1%82%D0%B8%D0%BF%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE-%D1%8D%D1%82%D0%B0%D0%B6%D0%B0-%D0%96%D0%9A-%D0%90%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0.webp",
     floorPlanPdf: "https://sellox.ru/wp-content/uploads/2024/07/%D0%9F%D0%BE%D1%8D%D1%82%D0%B0%D0%B6%D0%BD%D1%8B%D0%B9-%D0%BF%D0%BB%D0%B0%D0%BD-%D1%87-%D0%B1.pdf",
-    layoutTypesPerFloor: 6,
+    layoutTypesPerFloor: 9,
     coverImage: "https://sellox.ru/wp-content/uploads/2024/07/%D0%96%D0%9A-%D0%90%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0.webp",
     galleryImages: [
       "https://sellox.ru/wp-content/uploads/2024/07/%D0%96%D0%9A-%D0%90%D1%82%D0%BC%D0%BE%D1%81%D1%84%D0%B5%D1%80%D0%B0-1-1170x785.webp",
@@ -827,8 +827,14 @@ function renderDevelopment(id) {
 
   const objs = getObjectsFor(id).filter(o => o.status !== "sold");
   const objList = document.getElementById("dev-objects-list");
+  const objSectionLabel = objList ? objList.previousElementSibling : null;
+  if (objSectionLabel && objSectionLabel.classList.contains("section-label")) {
+    objSectionLabel.textContent = d.id === "zhk-atmosfera" ? "Наличие квартир" : "Квартиры в продаже";
+  }
   if (!objs.length) {
-    objList.innerHTML = '<div class="empty-note">Пока нет доступных квартир в этом ЖК.</div>';
+    objList.innerHTML = d.id === "zhk-atmosfera"
+      ? '<div class="empty-note">Цены и фактическое наличие квартир пока не подключены. Номера, площади и планировки уже отображаются из квартирографии.</div>'
+      : '<div class="empty-note">Пока нет доступных квартир в этом ЖК.</div>';
   } else {
     objList.innerHTML = objs.map(o => `
       <a class="card" href="#object/${o.id}">
@@ -851,7 +857,7 @@ function renderDevelopment(id) {
    Геометрические размеры участка пока не заявляются как
    строительные — они масштабированы для интерактивной сцены.
    ========================================================= */
-let dev3dRenderer = null, dev3dScene = null, dev3dCamera = null, dev3dControls = null, dev3dFrame = null;
+let dev3dRenderer = null, dev3dScene = null, dev3dCamera = null, dev3dControls = null, dev3dResize = null, dev3dFrame = null;
 
 const ATMOSFERA_BUILDINGS = [
   {id:1, floors:19, x:-7.0, z:-5.5, w:4.7, d:8.4, tone:0xB9BDC0},
@@ -942,7 +948,12 @@ const ATMOSFERA_STRUCTURE = {
         {type:"2к",area:"86,01 м²",view:"видовая",planPage:32},
         {type:"2Е",area:"61,71 м²",view:"невидовая",planPage:33}
       ],
-      topFloorRegulars: [],
+      topFloorRegulars: [
+        {number:333,type:"2к",area:"57,23 м²",view:"видовая",planPage:30},
+        {number:334,type:"2к",area:"80,14 м²",view:"видовая",planPage:31},
+        {number:335,type:"2к",area:"86,01 м²",view:"видовая",planPage:32},
+        {number:336,type:"2Е",area:"61,71 м²",view:"невидовая",planPage:33}
+      ],
       penthouses: []
     }
   ],
@@ -1470,7 +1481,10 @@ function dev3dShowBuildingInfo(id){
 function initDevelopment3D(d) {
   const holder=document.getElementById("dev3d-holder");
   if(!holder) return;
-  if(dev3dFrame) cancelAnimationFrame(dev3dFrame);
+  if(dev3dFrame) { cancelAnimationFrame(dev3dFrame); dev3dFrame=null; }
+  if(dev3dResize) { window.removeEventListener("resize",dev3dResize); dev3dResize=null; }
+  if(dev3dControls) { dev3dControls.dispose(); dev3dControls=null; }
+  if(dev3dRenderer) { dev3dRenderer.dispose(); dev3dRenderer=null; }
   holder.querySelectorAll("canvas").forEach(x=>x.remove());
 
   const w=holder.clientWidth||900, h=holder.clientHeight||420;
@@ -1565,7 +1579,7 @@ function initDevelopment3D(d) {
     const size=box.getSize(new THREE.Vector3());
     const dist=Math.max(size.x,size.z)*0.83;
     dev3dCamera.position.set(center.x+dist,dist*0.74,center.z+dist*0.88);
-    dev3dControls=dev3dControls || new THREE.OrbitControls(dev3dCamera,dev3dRenderer.domElement);
+    dev3dControls = new THREE.OrbitControls(dev3dCamera,dev3dRenderer.domElement);
     dev3dControls.enableDamping=true;
     dev3dControls.dampingFactor=0.065;
     dev3dControls.maxPolarAngle=Math.PI*0.47;
@@ -1585,7 +1599,8 @@ function initDevelopment3D(d) {
     dev3dCamera.updateProjectionMatrix();
     dev3dRenderer.setSize(nw,nh);
   }
-  window.addEventListener("resize",resize);
+  dev3dResize=resize;
+  window.addEventListener("resize",dev3dResize);
 
   function animate(){
     dev3dFrame=requestAnimationFrame(animate);
