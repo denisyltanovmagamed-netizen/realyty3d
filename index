@@ -740,14 +740,16 @@ function renderDevelopments() {
   list.innerHTML = DEVELOPMENTS.map(d => {
     const objs = getObjectsFor(d.id).filter(o => o.status !== "sold");
     const minPrice = objs.length ? Math.min(...objs.map(o => o.price)) : null;
+    const isAtmosfera = d.id === "zhk-atmosfera";
+    const structureCount = isAtmosfera ? ATMOSFERA_STRUCTURE.totals.ordinaryApartments : null;
     return `
       <a class="card" href="#development/${d.id}">
         <img class="card-img" src="${d.coverImage}" onerror="this.onerror=null; this.src=d.coverFallback;" alt="${d.title}">
         <div class="card-body">
           <div class="card-type">${d.city}</div>
           <div class="card-title">${d.title}</div>
-          <div class="card-meta"><span>${objs.length} ${objs.length === 1 ? "квартира" : "квартиры"} в продаже</span></div>
-          <div class="card-price">${minPrice !== null ? "От " + formatRub(minPrice) : "Уточняйте цену"}</div>
+          <div class="card-meta"><span>${isAtmosfera ? structureCount + " квартир в структуре" : objs.length + " " + (objs.length === 1 ? "квартира" : "квартиры") + " в продаже"}</span></div>
+          <div class="card-price">${minPrice !== null ? "От " + formatRub(minPrice) : isAtmosfera ? "Наличие и цены уточняются" : "Уточняйте цену"}</div>
         </div>
       </a>
     `;
