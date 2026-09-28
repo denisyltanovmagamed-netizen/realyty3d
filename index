@@ -353,6 +353,10 @@
   .atmosfera-plan-canvas-wrap canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:0 8px 28px rgba(0,0,0,.18);}
   .atmosfera-interior-3d-wrap{position:relative;height:min(62vh,560px);min-height:340px;background:#111619;border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;}
   .atmosfera-interior-3d-wrap canvas{display:block;width:100%!important;height:100%!important;}
+  .atmosfera-interior-room-nav{display:flex;gap:7px;overflow-x:auto;padding:10px 14px;background:var(--bg-raised);border-top:1px solid var(--line);border-bottom:1px solid var(--line);-webkit-overflow-scrolling:touch;}
+  .atmosfera-interior-room-nav::-webkit-scrollbar{display:none;}
+  .atmosfera-interior-room-chip{flex:0 0 auto;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);font-size:11.5px;color:var(--ink-dim);white-space:nowrap;}
+  .atmosfera-interior-room-chip.active{background:var(--gold);border-color:var(--gold);color:#1A1A1A;font-weight:700;}
   .atmosfera-interior-note{padding:10px 14px;font-size:11px;line-height:1.5;color:var(--ink-dim);}
   .atmosfera-plan-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 16px calc(12px + env(safe-area-inset-bottom,0px));font-size:11px;color:var(--ink-dim);}
   .atmosfera-plan-footer a{color:var(--gold);white-space:nowrap;}
@@ -482,6 +486,7 @@
       </div>
     </div>
     <div class="atmosfera-plan-pane" id="atmosfera-3d-pane">
+      <div class="atmosfera-interior-room-nav" id="atmosfera-interior-room-nav"></div>
       <div class="atmosfera-interior-3d-wrap" id="atmosfera-interior-3d-wrap">
         <div class="viewer-loading" id="atmosfera-interior-loading">Загрузка 3D-интерьера…</div>
         <button class="viewer-reset" id="atmosfera-interior-reset" type="button">Сбросить вид</button>
@@ -1239,6 +1244,41 @@ function initAtmosferaInterior3D(a){
   const center=new THREE.Vector3((minX+maxX)/2,0,(minZ+maxZ)/2);
   const span=Math.max(outerW,outerD);
   const controls=new THREE.OrbitControls(camera,renderer.domElement);
+  const roomNav=document.getElementById("atmosfera-interior-room-nav");
+  let activeRoomIndex=-1;
+  const setRoomChipState=()=>{
+    if(!roomNav) return;
+    roomNav.querySelectorAll(".atmosfera-interior-room-chip").forEach((btn,i)=>btn.classList.toggle("active",i===activeRoomIndex));
+  };
+  const focusRoom=(index)=>{
+    const r=rooms[index];
+    if(!r) return;
+    activeRoomIndex=index;
+    setRoomChipState();
+    const roomSpan=Math.max(r.w,r.d,2.2);
+    camera.position.set(r.x+roomSpan*1.15,Math.max(2.0,roomSpan*.85),r.z+roomSpan*1.15);
+    controls.target.set(r.x,.72,r.z);
+    controls.minDistance=Math.max(.9,roomSpan*.68);
+    controls.maxDistance=Math.max(6,roomSpan*2.2);
+    controls.update();
+  };
+  const focusOverview=()=>{
+    activeRoomIndex=-1;
+    setRoomChipState();
+    camera.position.set(center.x+span*1.0,span*.82,center.z+span*1.05);
+    controls.target.set(center.x,.8,center.z);
+    controls.minDistance=span*.75;
+    controls.maxDistance=span*2.4;
+    controls.update();
+  };
+  if(roomNav){
+    roomNav.innerHTML='<button class="atmosfera-interior-room-chip active" type="button" data-room-index="-1">Общий вид</button>'+
+      rooms.map((r,i)=>'<button class="atmosfera-interior-room-chip" type="button" data-room-index="'+i+'">'+r.name+'</button>').join("");
+    roomNav.querySelector('[data-room-index="-1"]').onclick=focusOverview;
+    roomNav.querySelectorAll('[data-room-index]').forEach(btn=>{
+      if(btn.dataset.roomIndex!=="-1") btn.onclick=()=>focusRoom(Number(btn.dataset.roomIndex));
+    });
+  }
   holder.__controls=controls;
   controls.enableDamping=true; controls.dampingFactor=.08; controls.minDistance=span*.75; controls.maxDistance=span*2.4; controls.maxPolarAngle=Math.PI*.48; controls.target.set(center.x,.8,center.z);
   camera.position.set(center.x+span*1.0,span*.82,center.z+span*1.05); controls.update();
@@ -1246,7 +1286,7 @@ function initAtmosferaInterior3D(a){
   const resize=()=>{const w=holder.clientWidth||900,h=holder.clientHeight||520;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);};
   holder.__resize=resize;
   window.addEventListener("resize",holder.__resize);
-  holder.__reset=()=>{camera.position.set(center.x+span*1.0,span*.82,center.z+span*1.05);controls.target.set(center.x,.8,center.z);controls.update();};
+  holder.__reset=focusOverview;
   const animate=()=>{holder.__frame=requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);};
   holder.__frame=requestAnimationFrame(animate);
 }
