@@ -1410,6 +1410,16 @@ function dev3dBuilding(def){
   const body=dev3dBox(def.w,h,def.d,dev3dMat(def.tone,0.7),0,h/2,0);
   g.add(body);
 
+  // Прозрачные hit-зоны по этажам: позволяют выбрать этаж прямо в 3D.
+  const floorHitMat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false});
+  for(let f=1;f<=def.floors;f++){
+    const hit=dev3dBox(def.w*0.98,floorH*0.92,def.d*0.98,floorHitMat,0,(f-0.5)*floorH,0);
+    hit.userData.building=def.id;
+    hit.userData.floor=f;
+    hit.userData.isFloorHit=true;
+    g.add(hit);
+  }
+
   const dark=dev3dMat(0x667177,0.42,0.1);
   const glass=dev3dWindowMaterial();
   const trim=dev3dMat(0xE1E4E4,0.58);
@@ -1607,7 +1617,7 @@ function initDevelopment3D(d) {
   const info=document.getElementById("dev3d-info");
   if(info) info.innerHTML = `
     <div style="font-weight:700;color:#F0F2F3;margin-bottom:4px;">3D-обзор ЖК «Атмосфера»</div>
-    <div style="font-size:11.5px;color:var(--ink-dim);">Нажмите на подъезд — ниже откроются его этажи и квартиры из шахматки.</div>
+    <div style="font-size:11.5px;color:var(--ink-dim);">Нажмите на подъезд или конкретный этаж — ниже откроются квартиры выбранного этажа.</div>
   `;
 
   const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
@@ -1618,12 +1628,21 @@ function initDevelopment3D(d) {
     ray.setFromCamera(mouse,dev3dCamera);
     const hits=ray.intersectObjects(dev3dScene.children,true);
     for(const hit of hits){
-      let o=hit.object;
-      while(o && o!==dev3dScene && !o.userData.building) o=o.parent;
-      if(o && o.userData.building){
-        const id=o.userData.building;
+      let o=hit.object, id=null, floor=null;
+      while(o && o!==dev3dScene){
+        if(o.userData.floor && o.userData.building){
+          id=o.userData.building;
+          floor=o.userData.floor;
+          break;
+        }
+        if(o.userData.building) id=o.userData.building;
+        o=o.parent;
+      }
+      if(id){
+        const building=getAtmosferaStructureBuilding(id);
+        const selectedFloor=Math.min(floor || building?.floors || 1, building?.floors || 1);
         dev3dShowBuildingInfo(id);
-        renderAtmosferaApartments(id,getAtmosferaStructureBuilding(id).floors);
+        renderAtmosferaApartments(id,selectedFloor);
         document.querySelectorAll("#dev-building-grid .dev-building-chip").forEach(btn=>btn.classList.toggle("active",Number(btn.dataset.buildingId)===id));
         const panel=document.getElementById("dev-floor-panel");
         if(panel) panel.scrollIntoView({behavior:"smooth",block:"center"});
