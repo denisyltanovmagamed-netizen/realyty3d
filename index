@@ -744,7 +744,7 @@ function renderDevelopments() {
     const structureCount = isAtmosfera ? ATMOSFERA_STRUCTURE.totals.ordinaryApartments : null;
     return `
       <a class="card" href="#development/${d.id}">
-        <img class="card-img" src="${d.coverImage}" onerror="this.onerror=null; this.src=d.coverFallback;" alt="${d.title}">
+        <img class="card-img" src="${d.coverImage}" onerror="this.onerror=null; this.src='${d.coverFallback}';" alt="${d.title}">
         <div class="card-body">
           <div class="card-type">${d.city}</div>
           <div class="card-title">${d.title}</div>
