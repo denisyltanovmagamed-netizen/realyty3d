@@ -1193,11 +1193,13 @@ function initAtmosferaInterior3D(a){
   const holder=document.getElementById("atmosfera-interior-3d-wrap");
   const loading=document.getElementById("atmosfera-interior-loading");
   if(!holder) return;
-  if(holder.__renderer){
+  if(holder.__frame) { cancelAnimationFrame(holder.__frame); holder.__frame=null; }
+  if(holder.__resize) { window.removeEventListener("resize",holder.__resize); holder.__resize=null; }
+  if(holder.__controls) { holder.__controls.dispose(); holder.__controls=null; }
+  if(holder.__renderer) {
     holder.__renderer.dispose();
     holder.querySelectorAll("canvas").forEach(x=>x.remove());
     holder.__renderer=null;
-    if(holder.__frame) cancelAnimationFrame(holder.__frame);
   }
   const width=holder.clientWidth||900,height=holder.clientHeight||520;
   const scene=new THREE.Scene();
@@ -1237,11 +1239,13 @@ function initAtmosferaInterior3D(a){
   const center=new THREE.Vector3((minX+maxX)/2,0,(minZ+maxZ)/2);
   const span=Math.max(outerW,outerD);
   const controls=new THREE.OrbitControls(camera,renderer.domElement);
+  holder.__controls=controls;
   controls.enableDamping=true; controls.dampingFactor=.08; controls.minDistance=span*.75; controls.maxDistance=span*2.4; controls.maxPolarAngle=Math.PI*.48; controls.target.set(center.x,.8,center.z);
   camera.position.set(center.x+span*1.0,span*.82,center.z+span*1.05); controls.update();
   if(loading) loading.style.display="none";
   const resize=()=>{const w=holder.clientWidth||900,h=holder.clientHeight||520;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);};
   holder.__resize=resize;
+  window.addEventListener("resize",holder.__resize);
   holder.__reset=()=>{camera.position.set(center.x+span*1.0,span*.82,center.z+span*1.05);controls.target.set(center.x,.8,center.z);controls.update();};
   const animate=()=>{holder.__frame=requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);};
   holder.__frame=requestAnimationFrame(animate);
