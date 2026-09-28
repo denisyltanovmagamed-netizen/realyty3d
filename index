@@ -1445,7 +1445,7 @@ function dev3dBuilding(def){
   g.userData.building=def.id;
   g.userData.floors=def.floors;
 
-  const floorH=0.23;
+  const floorH=0.75;
   const h=def.floors*floorH;
   const body=dev3dBox(def.w,h,def.d,dev3dMat(def.tone,0.7),0,h/2,0);
   g.add(body);
@@ -1464,32 +1464,34 @@ function dev3dBuilding(def){
   const glass=dev3dWindowMaterial();
   const trim=dev3dMat(0xE1E4E4,0.58);
 
-  // Центральные вертикальные стеклянные лоджии — характерный ритм фасада.
+  // Фасад: отдельные оконные/лоджийные секции на каждом этаже,
+  // чтобы высота 15–19 этажей визуально читалась в сцене.
   const sides=[
-    {z:-def.d/2-0.018, axis:"front"},
-    {z:def.d/2+0.018, axis:"back"}
+    {z:-def.d/2-0.018},
+    {z:def.d/2+0.018}
   ];
   sides.forEach(side=>{
-    for(let col=0;col<4;col++){
-      const x=-def.w/2+0.65+col*(def.w-1.3)/3;
-      const pane=dev3dBox(0.56,h*0.72,0.045,glass,x,h*0.49,side.z);
-      g.add(pane);
-      g.add(dev3dBox(0.045,h*0.78,0.08,trim,x-0.31,h*0.49,side.z));
-      g.add(dev3dBox(0.045,h*0.78,0.08,trim,x+0.31,h*0.49,side.z));
+    for(let f=0;f<def.floors;f++){
+      const floorY=f*floorH;
+      for(let col=0;col<4;col++){
+        const x=-def.w/2+0.65+col*(def.w-1.3)/3;
+        const pane=dev3dBox(0.56,floorH*0.48,0.045,glass,x,floorY+floorH*0.57,side.z);
+        g.add(pane);
+        g.add(dev3dBox(0.045,floorH*0.54,0.08,trim,x-0.31,floorY+floorH*0.57,side.z));
+        g.add(dev3dBox(0.045,floorH*0.54,0.08,trim,x+0.31,floorY+floorH*0.57,side.z));
+      }
     }
   });
 
-  // Узкие вертикальные пилоны и горизонтальные пояса.
+  // Узкие вертикальные пилоны и межэтажные пояса.
   [-def.w/2+0.18, def.w/2-0.18].forEach(x=>{
     g.add(dev3dBox(0.16,h,0.12,dark,x,h/2,-def.d/2-0.05));
     g.add(dev3dBox(0.16,h,0.12,dark,x,h/2,def.d/2+0.05));
   });
   for(let f=1;f<def.floors;f++){
     const y=f*floorH;
-    if(f%2===0){
-      g.add(dev3dBox(def.w+0.06,0.035,0.08,trim,0,y,-def.d/2-0.05));
-      g.add(dev3dBox(def.w+0.06,0.035,0.08,trim,0,y,def.d/2+0.05));
-    }
+    g.add(dev3dBox(def.w+0.06,0.035,0.08,trim,0,y,-def.d/2-0.05));
+    g.add(dev3dBox(def.w+0.06,0.035,0.08,trim,0,y,def.d/2+0.05));
   }
 
   // Выделенный нижний этаж коммерции.
